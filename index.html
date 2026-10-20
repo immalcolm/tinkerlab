@@ -606,14 +606,14 @@
     const PROJECTS = [
       {
         id: 'tech-drop-v3',
-        title: 'TECH DROP 3.5 — NP ICT Edition',
+        title: 'TECH DROP 4.0 — NP ICT Edition',
         categories: ['Mini Games', 'Interactive UI', 'AI & Simulation', 'Creative Coding'],
-        version: 'v3.5 (Featured)',
+        version: 'v4.0 (Featured)',
         featured: true,
         badge: 'FLAGSHIP INSTALLATION',
         badgeClass: 'flagship',
-        description: 'Cinematic, one-button interactive arcade experience created for the Ngee Ann Polytechnic School of InfoComm Technology. Features deterministic continuous collision detection (CCD) physics, procedural Web Audio synthesizer, real-time Canvas 2D VFX, and 6 custom superpower identities.',
-        tags: ['Canvas 2D', 'CCD Physics', 'Web Audio', 'NP ICT', 'VFX', 'Kiosk Ready'],
+        description: 'Cinematic, one-button interactive arcade experience created for the Ngee Ann Polytechnic School of InfoComm Technology. Features continuous collision detection (CCD) physics, procedural Web Audio synthesizer, 3-tier impacts, and 6 custom superpower identities.',
+        tags: ['Canvas 2D', 'Swept CCD Physics', 'Web Audio', 'NP ICT', 'VFX', 'Kiosk Ready'],
         launchUrl: './lucky_drop/v3/index.html',
         thumbUrl: './lucky_drop/v3/all_six_superpowers.jpg',
         repoUrl: 'https://github.com/immalcolm/tinkerlab/tree/main/lucky_drop/v3'
@@ -719,6 +719,11 @@
     const numNodes = 45;
     let mouse = { x: -1000, y: -1000, radius: 150 };
 
+    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {
+      reducedMotion = e.matches;
+    });
+
     function resizeBg() {
       width = bgCanvas.width = window.innerWidth;
       height = bgCanvas.height = window.innerHeight;
@@ -753,20 +758,22 @@
       for (let i = 0; i < nodes.length; i++) {
         const n1 = nodes[i];
 
-        // Move nodes
-        n1.x += n1.vx;
-        n1.y += n1.vy;
-        if (n1.x < 0 || n1.x > width) n1.vx *= -1;
-        if (n1.y < 0 || n1.y > height) n1.vy *= -1;
+        if (!reducedMotion) {
+          // Move nodes
+          n1.x += n1.vx;
+          n1.y += n1.vy;
+          if (n1.x < 0 || n1.x > width) n1.vx *= -1;
+          if (n1.y < 0 || n1.y > height) n1.vy *= -1;
 
-        // Mouse interaction
-        const dxM = mouse.x - n1.x;
-        const dyM = mouse.y - n1.y;
-        const distM = Math.hypot(dxM, dyM);
-        if (distM < mouse.radius) {
-          const force = (1 - distM / mouse.radius) * 1.5;
-          n1.x -= (dxM / distM) * force;
-          n1.y -= (dyM / distM) * force;
+          // Mouse interaction (guarded against distM === 0)
+          const dxM = mouse.x - n1.x;
+          const dyM = mouse.y - n1.y;
+          const distM = Math.hypot(dxM, dyM);
+          if (distM < mouse.radius && distM > 0.001) {
+            const force = (1 - distM / mouse.radius) * 1.5;
+            n1.x -= (dxM / distM) * force;
+            n1.y -= (dyM / distM) * force;
+          }
         }
 
         // Render node dot

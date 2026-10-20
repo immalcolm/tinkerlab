@@ -2,11 +2,29 @@ const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
 
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME_PATH = process.env.CHROME_BIN || process.env.PUPPETEER_EXECUTABLE_PATH || [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+].find(p => fs.existsSync(p));
+
+if (!CHROME_PATH) {
+  console.error('Error: No supported Chrome or Chromium executable found.');
+  console.error('Please set the CHROME_BIN or PUPPETEER_EXECUTABLE_PATH environment variable.');
+  process.exit(1);
+}
+
 const HOME_URL = 'file://' + path.resolve(__dirname, '../index.html');
 
 (async () => {
   console.log('=== Starting TinkerLab Homepage QA Test Suite ===');
+  console.log('Using browser executable:', CHROME_PATH);
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     headless: 'new',

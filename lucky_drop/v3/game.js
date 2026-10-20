@@ -2,23 +2,27 @@
 'use strict';
 
 /**
- * TECH DROP 3.5 — NP ICT NEXT-GENERATION INTERACTIVE ARCADE
- * Elite one-button interactive installation for Ngee Ann Polytechnic School of InfoComm Technology.
+ * TECH DROP 4.0 — PRINCIPAL GAME DESIGN & ENGINEERING QUALITY PASS
+ * Flagship interactive exhibition installation for Ngee Ann Polytechnic School of InfoComm Technology (NP ICT).
  * 
- * Features:
- * - Deterministic continuous collision detection (CCD) fixed-step physics engine
- * - Real contact normals, restitution, spin/torque transfer, and natural ballistics
- * - Curated natural seed bank with ZERO artificial magnetic steering
- * - Additive particle pooling & GPU-friendly Canvas 2D VFX
- * - Connected neighbor node neural pulse lighting propagation
- * - Procedural Web Audio synthesizer with stereo panning, velocity dynamics & polyphony limiter
- * - 6 distinct musical fanfares & custom vector emblems for each Tech Superpower
- * - High-end performance HUD (FPS, 1% lows, frame time graph, active voices, particle pool)
- * - Operator / Exhibition configuration layer with auto-reset & input debounce
+ * Architecture:
+ * - True Continuous Collision Detection (CCD) via authoritative TechDropPhysics engine
+ * - Real contact normals, restitution, tangential friction, and angular spin momentum transfer
+ * - Authentic 3-tier impact feedback (Light, Strong, Major) with matched visuals, camera impulse, and audio
+ * - Seamless physical landing preservation (zero teleportation or snapping)
+ * - Complete 10-phase emotional arc: Attract -> Anticipation -> Launch -> Drop -> Final Approach -> Landing -> Transformation -> Reveal -> Photo Moment -> Reset
+ * - Procedural Web Audio with master dynamics compressor, stereo panning, and 6 bespoke victory motifs
+ * - Performance Diagnostics HUD: Unclamped raw frametimes, true 1% low (P99) calculation, sim step timer, sparkline graph, stable hysteresis auto-quality
+ * - Kiosk & Operator configuration layer: Discovery mode vs Demonstration mode, volume sliders, duration, title customization
  */
 
 const W = 540, H = 960, TAU = Math.PI * 2, EPS = 1e-7;
 const $ = id => document.getElementById(id);
+
+// Authoritative Physics Engine
+const Physics = typeof TechDropPhysics !== 'undefined'
+  ? TechDropPhysics
+  : (typeof require !== 'undefined' ? require('./physics_engine.js') : null);
 
 // Canvas and Rendering Context
 const canvas = $('scene'), g = canvas.getContext('2d', { alpha: false }), stage = $('stage');
@@ -50,11 +54,29 @@ const ui = {
   fullscreen: $('fullscreen'),
   debug: $('debug'),
   debugStatus: $('debugStatus'),
-  forceOutcome: $('forceOutcome')
+  forceOutcome: $('forceOutcome'),
+  configBtn: $('configBtn'),
+  operatorModal: $('operatorModal'),
+  closeConfig: $('closeConfig'),
+  saveConfig: $('saveConfig'),
+  cfgMode: $('cfgMode'),
+  cfgEventTitle: $('cfgEventTitle'),
+  cfgEventSubtitle: $('cfgEventSubtitle'),
+  cfgDuration: $('cfgDuration'),
+  cfgDurationVal: $('cfgDurationVal'),
+  cfgMasterVol: $('cfgMasterVol'),
+  cfgVolVal: $('cfgVolVal'),
+  cfgSfxVol: $('cfgSfxVol'),
+  cfgSfxVal: $('cfgSfxVal'),
+  cfgQuality: $('cfgQuality'),
+  cfgFpsToggle: $('cfgFpsToggle'),
+  cfgAutoReset: $('cfgAutoReset'),
+  brandTitle: $('brandTitle'),
+  brandSubtitle: $('brandSubtitle')
 };
 
 // ==========================================
-// SIX TECH SUPERPOWER THEMES & EMBLEMS
+// SIX TECH SUPERPOWER THEMES & BESPOKE EMBLEMS
 // ==========================================
 const THEMES = [
   {
@@ -151,7 +173,9 @@ const ellipseGlow = (c, x, y, r, stops) => {
 // CONFIGURATION & OPERATOR SETTINGS
 // ==========================================
 const config = {
-  eventName: 'NP ICT OPEN HOUSE 2026',
+  mode: 'discovery', // 'discovery' (pure physics) or 'demo' (curated)
+  eventName: 'NGEE ANN POLYTECHNIC',
+  eventSubtitle: 'SCHOOL OF INFOCOMM TECHNOLOGY',
   roundDuration: 4.5,
   resultDuration: 6.0,
   sfxVolume: 0.85,
@@ -168,6 +192,7 @@ if (urlParams.has('lite')) qualityPreset = 'low';
 if (urlParams.has('high')) qualityPreset = 'high';
 if (urlParams.has('med')) qualityPreset = 'medium';
 if (urlParams.has('quality')) qualityPreset = urlParams.get('quality');
+if (urlParams.has('mode')) config.mode = urlParams.get('mode');
 
 // Motion accessibility check
 const prefersReducedMotion = matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -185,14 +210,13 @@ let track = [], impactEvents = [], nextImpact = 0;
 let ball = { x: 270, y: 343, rotation: 0, vx: 0, vy: 0, spin: 0 };
 let trail = [];
 let impactFlash = 0, shake = 0, capturePulse = 0, zoomFocus = 1.0;
+let landingPos = { x: 270, y: 762 };
 
-// Board Geometry
-const slotWidth = 448 / 6;
-const slotCenter = i => 46 + (i + 0.5) * slotWidth;
-const board = { x: 30, y: 273, w: 480, h: 535 };
+// Board Geometry & Adjacency Pegs
+const slotWidth = Physics ? Physics.SLOT_WIDTH : 448 / 6;
+const slotCenter = i => Physics ? Physics.slotCenter(i) : 46 + (i + 0.5) * slotWidth;
 
-// Build Peg Matrix with adjacency graph for circuit illumination
-const pegRows = 9;
+const pegRows = Physics ? Physics.PEG_ROWS : 9;
 const pegs = [];
 for (let r = 0; r < pegRows; r++) {
   const cols = r % 2 ? 8 : 9;
@@ -205,6 +229,8 @@ for (let r = 0; r < pegRows; r++) {
       col: c,
       glow: 0,
       pulse: 0,
+      recoilX: 0,
+      recoilY: 0,
       hotColor: '#DEFF52',
       id: `${r}-${c}`,
       neighbors: []
@@ -212,7 +238,7 @@ for (let r = 0; r < pegRows; r++) {
   }
 }
 
-// Link neighbors for electrical circuit pulse
+// Link neighbors for electrical circuit pulse propagation
 for (let i = 0; i < pegs.length; i++) {
   const p1 = pegs[i];
   for (let j = i + 1; j < pegs.length; j++) {
@@ -223,12 +249,6 @@ for (let i = 0; i < pegs.length; i++) {
       p2.neighbors.push(i);
     }
   }
-}
-
-// Bin Dividers
-const dividers = [];
-for (let i = 1; i < 6; i++) {
-  dividers.push({ x: 46 + i * slotWidth, yTop: 736, yBottom: 775, r: 3.5 });
 }
 
 // Ambient Background Data Particles
@@ -514,46 +534,69 @@ function playSynthTone({ freq, duration = 0.08, type = 'sine', volume = 0.15, de
 }
 
 function launchSound() {
-  // Deep pneumatic bass drop
+  // Deep pneumatic bass drop + rising electromagnetic coil
   playSynthTone({ freq: 90, duration: 0.45, type: 'sawtooth', volume: 0.28, freqTo: 260 });
-  // Ascending electromagnetic charge
   playSynthTone({ freq: 480, duration: 0.22, type: 'sine', volume: 0.24, delay: 0.12, freqTo: 950 });
-  // High-frequency plasma ionization
   playSynthTone({ freq: 880, duration: 0.25, type: 'triangle', volume: 0.22, delay: 0.24, freqTo: 1450 });
 }
 
 function hitSound(ev) {
   const normForce = clamp(ev.force / 120, 0.15, 1.0);
   const pan = clamp((ev.x - 270) / 240, -0.85, 0.85);
+  const tier = ev.tier || 1;
 
-  // 1. Crisp high-frequency strike transient (metallic tactile snap)
-  playSynthTone({
-    freq: 1800 + (ev.peg % 8) * 120,
-    duration: 0.02,
-    type: 'triangle',
-    volume: 0.08 + normForce * 0.12,
-    freqTo: 800,
-    pan
-  });
-
-  // 2. Resonant tonal bell body
-  const baseFreq = 480 + (ev.peg % 8) * 90 + normForce * 240;
-  playSynthTone({
-    freq: baseFreq,
-    duration: 0.045 + normForce * 0.06,
-    type: 'sine',
-    volume: 0.10 + normForce * 0.16,
-    freqTo: baseFreq * 0.75,
-    pan
-  });
-
-  // 3. Sub-bass kinetic punch on forceful impacts
-  if (ev.force > 55) {
+  if (tier === 1) {
+    // Tier 1: Soft Tap
     playSynthTone({
-      freq: 110,
-      duration: 0.075,
+      freq: 680 + (ev.peg % 8) * 80,
+      duration: 0.03,
+      type: 'sine',
+      volume: 0.08 + normForce * 0.06,
+      freqTo: 520,
+      pan
+    });
+  } else if (tier === 2) {
+    // Tier 2: Strong Collision
+    playSynthTone({
+      freq: 1800 + (ev.peg % 8) * 110,
+      duration: 0.02,
       type: 'triangle',
-      volume: 0.12 + normForce * 0.18,
+      volume: 0.10 + normForce * 0.10,
+      freqTo: 750,
+      pan
+    });
+    const baseFreq = 480 + (ev.peg % 8) * 90;
+    playSynthTone({
+      freq: baseFreq,
+      duration: 0.05,
+      type: 'sine',
+      volume: 0.12 + normForce * 0.12,
+      freqTo: baseFreq * 0.75,
+      pan
+    });
+  } else {
+    // Tier 3: Major Impact
+    playSynthTone({
+      freq: 2200 + (ev.peg % 8) * 120,
+      duration: 0.025,
+      type: 'triangle',
+      volume: 0.14 + normForce * 0.12,
+      freqTo: 850,
+      pan
+    });
+    playSynthTone({
+      freq: 460 + (ev.peg % 8) * 80,
+      duration: 0.07,
+      type: 'sine',
+      volume: 0.16 + normForce * 0.14,
+      freqTo: 320,
+      pan
+    });
+    playSynthTone({
+      freq: 105,
+      duration: 0.08,
+      type: 'triangle',
+      volume: 0.18 + normForce * 0.15,
       freqTo: 45,
       pan
     });
@@ -561,13 +604,12 @@ function hitSound(ev) {
 }
 
 function captureSound() {
-  // Massive energy lock sub-impact
   playSynthTone({ freq: 75, duration: 0.65, type: 'sawtooth', volume: 0.35, freqTo: 480 });
   playSynthTone({ freq: 520, duration: 0.40, type: 'triangle', volume: 0.32, delay: 0.14, freqTo: 980 });
   playSynthTone({ freq: 1150, duration: 0.32, type: 'sine', volume: 0.28, delay: 0.35, freqTo: 1600 });
 }
 
-// 6 Unique Victory Fanfares (Rich Harmonic Chords & Motifs)
+// 6 Unique Victory Fanfares
 function playVictoryTheme(outcomeIndex) {
   const t = THEMES[outcomeIndex];
   switch (outcomeIndex) {
@@ -608,223 +650,6 @@ function playVictoryTheme(outcomeIndex) {
       playSynthTone({ freq: 246.94, duration: 0.8, type: 'sine', volume: 0.28, delay: 0.09 });
       break;
   }
-}
-
-// ==========================================
-// NEXT-GEN DETERMINISTIC PHYSICS ENGINE
-// Continuous Collision Detection (CCD)
-// Real Contact Normals, Restitution & Spin
-// ==========================================
-function lcg(seed) {
-  let s = (seed >>> 0);
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-
-// Curated 100% natural seed bank for each of the 6 outcome slots
-// Every seed in this bank has 14-17 rich peg impacts, lands with <1.5px center error,
-// and runs purely on physics with ZERO artificial magnetic pull.
-const CURATED_SEEDS = [
-  [144525, 150971, 189061, 185252, 47835], // Slot 0: AI Architect
-  [105263, 55746, 130461, 184373, 177634],  // Slot 1: Cyber Guardian
-  [153901, 102919, 29083, 94715, 168844],   // Slot 2: Code Creator
-  [58969, 147162, 128996, 188768, 150092],  // Slot 3: Data Detective
-  [146869, 105556, 116983, 84460, 143646],  // Slot 4: Cloud Pilot
-  [54574, 158589, 66587, 31720, 131047]     // Slot 5: UX Inventor
-];
-
-function simulate(dropTarget, seed) {
-  const rng = lcg(seed);
-  const dt = 1 / 240; // 240Hz sub-step
-  const maxSteps = 240 * 7;
-  const gravity = 860;
-  const R = 9.5; // ball radius
-  const P = 6.2; // peg radius
-  const minPegDist = R + P;
-  const minPegDist2 = minPegDist * minPegDist;
-
-  // Track chatter per peg
-  const chatterMap = new Uint8Array(pegs.length);
-  const lastStepMap = new Int32Array(pegs.length).fill(-1);
-
-  let x = 270 + (rng() - 0.5) * 14;
-  let y = 338;
-  let vx = (rng() - 0.5) * 36;
-  let vy = 50 + rng() * 25;
-  let spin = 0;
-
-  const hits = [];
-  const trajectory = [];
-
-  for (let step = 0; step < maxSteps; step++) {
-    const t = step * dt;
-
-    // Gravity and subtle air drag
-    vy += gravity * dt;
-    vx *= (1 - 0.10 * dt);
-    vy *= (1 - 0.10 * dt);
-
-    // Progressive safety downward velocity if drop extends past 4.8s
-    if (t > 4.8) {
-      vy = Math.max(vy, 180 + (t - 4.8) * 100);
-    }
-
-    x += vx * dt;
-    y += vy * dt;
-
-    // Side wall bounce
-    if (x < 52 + R) {
-      x = 52 + R;
-      vx = Math.abs(vx) * 0.65 + 25;
-      vy = Math.max(vy, 60);
-      spin += vy * 0.04;
-    } else if (x > 488 - R) {
-      x = 488 - R;
-      vx = -Math.abs(vx) * 0.65 - 25;
-      vy = Math.max(vy, 60);
-      spin -= vy * 0.04;
-    }
-
-    // Top guide funnels
-    if (y < 365) {
-      if (x < 240) {
-        x += 2.5;
-        vx = Math.abs(vx) * 0.5 + 25;
-      } else if (x > 300) {
-        x -= 2.5;
-        vx = -Math.abs(vx) * 0.5 - 25;
-      }
-    }
-
-    // Peg collisions with real contact normals and spin transfer
-    for (let i = 0; i < pegs.length; i++) {
-      const p = pegs[i];
-      const dx = x - p.x;
-      const dy = y - p.y;
-      const dist2 = dx * dx + dy * dy;
-
-      if (dist2 < minPegDist2) {
-        const dist = Math.sqrt(dist2) || 0.001;
-        const nx = dx / dist;
-        const ny = dy / dist;
-
-        const overlap = minPegDist - dist;
-        x += nx * overlap;
-        y += ny * overlap;
-
-        const vn = vx * nx + vy * ny;
-        if (lastStepMap[i] === step - 1) {
-          chatterMap[i]++;
-        } else {
-          chatterMap[i] = 0;
-        }
-        lastStepMap[i] = step;
-
-        if (chatterMap[i] > 2) {
-          // Break pinch immediately
-          vx = nx * 80;
-          vy = Math.max(vy + 40, 80);
-          x += nx * 2;
-          y += ny * 2;
-        } else if (vn < 0) {
-          const restitution = 0.65;
-          const friction = 0.20;
-
-          const tx = -ny;
-          const ty = nx;
-          const vt = vx * tx + vy * ty;
-
-          const impulseN = -(1 + restitution) * vn;
-          const impulseT = -vt * friction;
-
-          vx += impulseN * nx + impulseT * tx;
-          vy += impulseN * ny + impulseT * ty;
-          if (vy < 30) vy += 35;
-
-          spin += (vt * friction) / R * 0.4;
-          vx += tx * spin * 0.06;
-          vy += ty * spin * 0.06;
-
-          const force = Math.abs(vn);
-          if (force > 18) {
-            hits.push({
-              step,
-              t,
-              peg: i,
-              x: p.x,
-              y: p.y,
-              nx,
-              ny,
-              force,
-              speed: Math.hypot(vx, vy)
-            });
-          }
-        }
-      }
-    }
-
-    // Bin dividers
-    for (const d of dividers) {
-      if (y > d.yTop - R && y < d.yBottom) {
-        const dx = x - d.x;
-        const dy = y - d.yTop;
-        const dist2 = dx * dx + dy * dy;
-        const minDist = R + d.r;
-        if (dist2 < minDist * minDist) {
-          const dist = Math.sqrt(dist2) || 0.001;
-          const nx = dx / dist;
-          const ny = dy / dist;
-          x += nx * (minDist - dist);
-          y += ny * (minDist - dist);
-          const vn = vx * nx + vy * ny;
-          if (vn < 0) {
-            vx -= (1 + 0.5) * vn * nx;
-            vy -= (1 + 0.5) * vn * ny;
-          }
-        } else if (y >= d.yTop && Math.abs(x - d.x) < R + d.r) {
-          const sign = x < d.x ? -1 : 1;
-          x = d.x + sign * (R + d.r);
-          vx = sign * Math.abs(vx) * 0.5;
-        }
-      }
-    }
-
-    // Sample recorded trajectory at 120Hz
-    if (step % 2 === 0) {
-      trajectory.push({ t, x, y, vx, vy, spin });
-    }
-
-    if (y >= 762) {
-      break;
-    }
-  }
-
-  // Calculate natural slot landing
-  const finalX = x;
-  let slot = Math.floor((finalX - 46) / slotWidth);
-  slot = Math.max(0, Math.min(5, slot));
-
-  return {
-    sim: trajectory,
-    hits,
-    landingSlot: slot,
-    landingX: finalX,
-    duration: trajectory[trajectory.length - 1]?.t || 4.5
-  };
-}
-
-// Cycle targets evenly in random mode
-function newCycleTarget() {
-  if (!bag.length) {
-    bag = [0, 1, 2, 3, 4, 5];
-    for (let i = 5; i > 0; i--) {
-      let j = Math.floor(random(0, i + 1));
-      [bag[j], bag[i]] = [bag[i], bag[j]];
-    }
-  }
-  return bag.pop();
 }
 
 // ==========================================
@@ -912,7 +737,7 @@ function announce(s) {
   ui.announcer.textContent = s;
 }
 
-let playingDuration = 4.5;
+let playingDuration = config.roundDuration || 4.5;
 
 function start() {
   if (state !== 'idle') return false;
@@ -921,28 +746,30 @@ function start() {
 
   // Determine target outcome
   let forced = parseInt(ui.forceOutcome.value, 10);
-  if (forced >= 0 && forced <= 5) {
+  if (forced >= 0 && forced <= 5 && Physics) {
+    // Demonstration Mode: pick curated natural seed for chosen slot
     target = forced;
-    // Pick an unmanipulated natural seed from the curated bank
-    const seedOptions = CURATED_SEEDS[target];
+    const seedOptions = Physics.CURATED_SEEDS[target];
     const pickedSeed = seedOptions[round % seedOptions.length];
-    const generated = simulate(target, pickedSeed);
-    track = generated.sim;
+    const generated = Physics.simulateTrajectory(pickedSeed);
+    track = generated.trajectory;
+    landingPos = { x: generated.landingX, y: generated.landingY };
     impactEvents = generated.hits.map(e => ({
       ...e,
       showT: (e.t / Math.max(0.1, generated.duration)) * playingDuration
     }));
-    outcome = generated.landingSlot;
-  } else {
-    // Natural free play: pure physics drop!
-    const naturalSeed = 20000 + (round * 373 + Date.now() % 50000);
-    const generated = simulate(-1, naturalSeed);
-    track = generated.sim;
+    outcome = generated.slot;
+  } else if (Physics) {
+    // Discovery Mode: pure physics drop! Actual landing coordinates determine slot
+    const naturalSeed = 50000 + (round * 317 + (Date.now() % 50000));
+    const generated = Physics.simulateTrajectory(naturalSeed);
+    track = generated.trajectory;
+    landingPos = { x: generated.landingX, y: generated.landingY };
     impactEvents = generated.hits.map(e => ({
       ...e,
       showT: (e.t / Math.max(0.1, generated.duration)) * playingDuration
     }));
-    outcome = generated.landingSlot;
+    outcome = generated.slot;
     target = outcome;
   }
 
@@ -996,10 +823,34 @@ function atTrack(time) {
 
 function impact(e) {
   const p = pegs[e.peg];
-  triggerNeuralPulse(e.peg, THEMES[target].color);
-  shake = Math.max(shake, clamp(e.force / 110, 1.2, 4.0));
-  addRing(p.x, p.y, p.hotColor, 8, 0.48);
-  burst(p.x, p.y, e.peg % 3 === 0 ? '#D8FF3E' : p.hotColor, clamp(Math.round(e.force / 12), 7, 20), 0.85);
+  const tier = e.tier || 1;
+
+  if (tier === 3) {
+    // Major Impact
+    triggerNeuralPulse(e.peg, THEMES[target].color);
+    shake = Math.max(shake, 3.2);
+    addRing(p.x, p.y, THEMES[target].color, 12, 0.55);
+    burst(p.x, p.y, THEMES[target].color, 16, 1.1);
+    impactFlash = Math.max(impactFlash, 0.65);
+    p.recoilX = e.nx * 3.0;
+    p.recoilY = e.ny * 3.0;
+  } else if (tier === 2) {
+    // Strong Collision
+    p.glow = 0.85;
+    p.hotColor = THEMES[target].color;
+    shake = Math.max(shake, 1.8);
+    addRing(p.x, p.y, p.hotColor, 8, 0.45);
+    burst(p.x, p.y, e.peg % 3 === 0 ? '#D8FF3E' : p.hotColor, 9, 0.85);
+    p.recoilX = e.nx * 1.5;
+    p.recoilY = e.ny * 1.5;
+  } else {
+    // Light Tap
+    p.glow = 0.45;
+    p.hotColor = '#DEFF52';
+    addRing(p.x, p.y, '#DEFF52', 5, 0.35);
+    burst(p.x, p.y, '#DEFF52', 4, 0.5);
+  }
+
   hitSound(e);
 
   if ((nextImpact % 3) === 1) {
@@ -1020,21 +871,24 @@ function capture() {
   shake = 8.0;
   zoomFocus = 1.08;
 
-  let x = slotCenter(target);
-  ball.x = x;
-  ball.y = 762;
+  // Preserve the actual physical landing position (zero snapping or teleporting!)
+  const actualX = landingPos.x;
+  const actualY = landingPos.y;
+  ball.x = actualX;
+  ball.y = actualY;
 
   ui.status.classList.add('visible');
   ui.phase.textContent = 'SIGNAL CAPTURED // CORE UNLOCKED';
   ui.phaseFill.style.transform = 'scaleX(1)';
   ui.pct.textContent = '100%';
 
-  burst(x, 755, THEMES[target].color, 160, 1.6, 'confetti');
+  burst(actualX, 755, THEMES[target].color, 160, 1.6, 'confetti');
   for (let i = 0; i < 3; i++) {
-    addRing(x, 754, THEMES[target].color, 10 + i * 14, 1.0 + i * 0.2);
+    addRing(actualX, 754, THEMES[target].color, 10 + i * 14, 1.0 + i * 0.2);
   }
 
-  ui.capture.style.left = (clamp(x, 115, 425) / W * 100) + '%';
+  // Anchor capture core visual to actual landing X
+  ui.capture.style.left = (clamp(actualX, 115, 425) / W * 100) + '%';
   ui.capture.classList.remove('active');
   void ui.capture.offsetWidth;
   ui.capture.classList.add('active');
@@ -1125,10 +979,12 @@ function tick(dt) {
   capturePulse = Math.max(0, capturePulse - dt * 0.55);
   zoomFocus = lerp(zoomFocus, 1.0, dt * 2.0);
 
-  // Fade peg illumination and neural pulses
+  // Fade peg illumination and return recoil
   for (const p of pegs) {
     p.glow = Math.max(0, p.glow - dt * 2.6);
     p.pulse = Math.max(0, p.pulse - dt * 2.0);
+    p.recoilX = lerp(p.recoilX, 0, dt * 8);
+    p.recoilY = lerp(p.recoilY, 0, dt * 8);
   }
 
   // Update active particles in pool
@@ -1210,12 +1066,14 @@ function tick(dt) {
 function drawPeg(c, p) {
   const power = Math.max(p.glow, p.pulse * 0.6);
   const color = p.hotColor || '#DEFF52';
+  const px = p.x + p.recoilX;
+  const py = p.y + p.recoilY;
 
   // Ambient idle shimmer
   let idlePulse = 0.5 + 0.5 * Math.sin(clock * 2.0 + p.col * 0.6 + p.r);
 
   if (power > 0.03) {
-    ellipseGlow(c, p.x, p.y, 36, [
+    ellipseGlow(c, px, py, 36, [
       [0, color + Math.round(power * 100).toString(16).padStart(2, '0')],
       [1, color + '00']
     ]);
@@ -1225,7 +1083,7 @@ function drawPeg(c, p) {
   c.shadowColor = power > 0.1 ? color : '#8fdcff';
   c.shadowBlur = power * 22 + 4;
 
-  const grad = c.createRadialGradient(p.x - 2.8, p.y - 3, 0.5, p.x + 0.4, p.y + 1.5, 8);
+  const grad = c.createRadialGradient(px - 2.8, py - 3, 0.5, px + 0.4, py + 1.5, 8);
   grad.addColorStop(0, '#ffffff');
   grad.addColorStop(0.3, power > 0.1 ? '#dfff87' : '#e0f7ff');
   grad.addColorStop(0.55, power > 0.1 ? '#88bf48' : '#7298b6');
@@ -1233,13 +1091,13 @@ function drawPeg(c, p) {
 
   c.fillStyle = grad;
   c.beginPath();
-  c.arc(p.x, p.y, 5.8 + power * 2 + idlePulse * 0.25, 0, TAU);
+  c.arc(px, py, 5.8 + power * 2 + idlePulse * 0.25, 0, TAU);
   c.fill();
   c.restore();
 
   // Glass Specular Highlight
   c.beginPath();
-  c.arc(p.x - 2.0, p.y - 2.1, 1.45, 0, TAU);
+  c.arc(px - 2.0, py - 2.1, 1.45, 0, TAU);
   c.fillStyle = '#ffffffd8';
   c.fill();
 
@@ -1249,7 +1107,7 @@ function drawPeg(c, p) {
     c.strokeStyle = color;
     c.lineWidth = 1.2;
     c.beginPath();
-    c.arc(p.x, p.y, 10 + (1 - power) * 9, 0, TAU);
+    c.arc(px, py, 10 + (1 - power) * 9, 0, TAU);
     c.stroke();
     c.globalAlpha = 1;
   }
@@ -1425,9 +1283,9 @@ function render() {
   // Render Ball
   if (state === 'playing') drawBall(g);
 
-  // Render Capture Blast
+  // Render Capture Blast at actual physical landing coordinates
   if (state === 'capture') {
-    let x = slotCenter(target);
+    const x = landingPos.x;
     ellipseGlow(g, x, 758, 140, [
       [0, '#ffffffe3'],
       [0.18, THEMES[target].color + 'aa'],
@@ -1452,28 +1310,33 @@ function render() {
 
 // ==========================================
 // PERFORMANCE PROFILER & DIAGNOSTIC HUD
-// FPS, 1% Lows, Frametime Sparkline
+// Unclamped raw frametimes & True 1% Low (P99)
 // ==========================================
 const fpsHistory = [];
-const frameTimes = [];
+const frameTimes = []; // Rolling window of raw frametimes (ms)
 let lastFpsUpdate = 0;
 let currentFps = 60, smoothedFps = 60, onePercentLow = 58;
 let showFpsHud = urlParams.has('fps') || urlParams.has('debug');
 
+let lowFpsDuration = 0;
+let highFpsDuration = 0;
+let lastQualityChangeTime = 0;
+
 const hudCanvas = document.createElement('canvas');
 hudCanvas.id = 'perfHud';
-hudCanvas.width = 180;
-hudCanvas.height = 100;
+hudCanvas.width = 195;
+hudCanvas.height = 108;
 hudCanvas.style.cssText = 'position:absolute;top:12px;left:12px;z-index:99;pointer-events:none;background:#050c18dd;border:1px solid #75fbfd55;border-radius:6px;padding:4px;display:' + (showFpsHud ? 'block' : 'none');
 stage.appendChild(hudCanvas);
 const hg = hudCanvas.getContext('2d');
 
-function updatePerformanceMetrics(now, dt) {
-  frameTimes.push(dt * 1000);
-  if (frameTimes.length > 90) frameTimes.shift();
+function updatePerformanceMetrics(now, rawDt, simTimeMs) {
+  const frameMs = rawDt * 1000;
+  frameTimes.push(frameMs);
+  if (frameTimes.length > 240) frameTimes.shift(); // 240 frame sample window
 
-  if (now - lastFpsUpdate >= 250) {
-    currentFps = Math.round(1 / Math.max(0.001, dt));
+  if (now - lastFpsUpdate >= 200) {
+    currentFps = Math.round(1 / Math.max(0.001, rawDt));
     fpsHistory.push(currentFps);
     if (fpsHistory.length > 24) fpsHistory.shift();
 
@@ -1481,51 +1344,73 @@ function updatePerformanceMetrics(now, dt) {
     for (const f of fpsHistory) sum += f;
     smoothedFps = Math.round(sum / fpsHistory.length);
 
-    // Calculate 1% Low
-    const sortedTimes = [...frameTimes].sort((a, b) => b - a);
-    const p99Index = Math.floor(sortedTimes.length * 0.05);
+    // Calculate True 1% Low FPS using 99th percentile frame time
+    const sortedTimes = [...frameTimes].sort((a, b) => a - b);
+    const p99Index = Math.min(sortedTimes.length - 1, Math.floor(sortedTimes.length * 0.99));
     const worstTime = sortedTimes[p99Index] || 16.6;
     onePercentLow = Math.round(1000 / Math.max(1, worstTime));
 
     lastFpsUpdate = now;
 
-    // Auto Quality Adaptation with 4s hysteresis
+    // Stable Auto-Quality Hysteresis with 5s cooldown
     if (qualityPreset === 'auto') {
-      if (smoothedFps < 50 && effectiveQuality !== 'low') {
-        effectiveQuality = effectiveQuality === 'high' ? 'medium' : 'low';
-        resize();
-      } else if (smoothedFps >= 58 && effectiveQuality !== 'high') {
-        effectiveQuality = effectiveQuality === 'low' ? 'medium' : 'high';
-        resize();
+      if (now - lastQualityChangeTime > 5000) {
+        if (smoothedFps < 45 || onePercentLow < 30) {
+          lowFpsDuration += 0.2;
+          highFpsDuration = 0;
+          if (lowFpsDuration >= 3.0 && effectiveQuality !== 'low') {
+            effectiveQuality = effectiveQuality === 'high' ? 'medium' : 'low';
+            lastQualityChangeTime = now;
+            lowFpsDuration = 0;
+            resize();
+          }
+        } else if (smoothedFps >= 58 && onePercentLow >= 50) {
+          highFpsDuration += 0.2;
+          lowFpsDuration = 0;
+          if (highFpsDuration >= 6.0 && effectiveQuality !== 'high') {
+            effectiveQuality = effectiveQuality === 'low' ? 'medium' : 'high';
+            lastQualityChangeTime = now;
+            highFpsDuration = 0;
+            resize();
+          }
+        } else {
+          lowFpsDuration = 0;
+          highFpsDuration = 0;
+        }
       }
     }
   }
 
   // Draw HUD if visible
   if (showFpsHud) {
-    hg.clearRect(0, 0, 180, 100);
+    hg.clearRect(0, 0, 195, 108);
     hg.fillStyle = '#a1e4ff';
     hg.font = '900 9px monospace';
     hg.fillText(`FPS: ${currentFps} (${smoothedFps}) | 1% LOW: ${onePercentLow}`, 6, 12);
     hg.fillStyle = '#DEFF52';
-    hg.fillText(`FRAME: ${(dt * 1000).toFixed(1)}ms | DPR: ${(canvas.width / W).toFixed(1)}`, 6, 24);
+    hg.fillText(`FRAME: ${frameMs.toFixed(1)}ms | SIM: ${simTimeMs.toFixed(2)}ms`, 6, 24);
     hg.fillStyle = '#66F4EF';
-    hg.fillText(`PARTICLES: ${particlePool.filter(p => p.active).length} | QUAL: ${effectiveQuality.toUpperCase()}`, 6, 36);
+    hg.fillText(`PARTICLES: ${particlePool.filter(p => p.active).length} | DPR: ${(canvas.width / W).toFixed(1)} | ${effectiveQuality.toUpperCase()}`, 6, 36);
 
-    // Sparkline Graph
-    hg.strokeStyle = '#436d93';
+    // Baseline reference lines at 16.6ms (60 FPS) and 33.3ms (30 FPS)
+    const baseLineY = 98;
+    hg.strokeStyle = '#436d9333';
     hg.lineWidth = 1;
     hg.beginPath();
-    hg.moveTo(6, 92);
-    hg.lineTo(174, 92);
+    hg.moveTo(6, baseLineY);
+    hg.lineTo(189, baseLineY);
+    hg.moveTo(6, baseLineY - 16.6 * 1.5);
+    hg.lineTo(189, baseLineY - 16.6 * 1.5);
     hg.stroke();
 
+    // Sparkline Graph of real frame times
     hg.strokeStyle = '#DEFF52';
     hg.lineWidth = 1.2;
     hg.beginPath();
-    for (let i = 0; i < frameTimes.length; i++) {
-      let x = 6 + (i / 90) * 168;
-      let y = 92 - clamp(frameTimes[i] * 1.8, 0, 48);
+    const len = frameTimes.length;
+    for (let i = 0; i < len; i++) {
+      let x = 6 + (i / 240) * 183;
+      let y = baseLineY - clamp(frameTimes[i] * 1.5, 0, 56);
       if (i === 0) hg.moveTo(x, y);
       else hg.lineTo(x, y);
     }
@@ -1537,6 +1422,7 @@ function updatePerformanceMetrics(now, dt) {
 function toggleFpsHud() {
   showFpsHud = !showFpsHud;
   hudCanvas.style.display = showFpsHud ? 'block' : 'none';
+  if (ui.cfgFpsToggle) ui.cfgFpsToggle.checked = showFpsHud;
 }
 
 // ==========================================
@@ -1544,16 +1430,80 @@ function toggleFpsHud() {
 // ==========================================
 function frame(now) {
   if (!last) last = now;
-  let dt = clamp((now - last) / 1000, 0, 0.045);
+  const rawDt = Math.max(0.0001, (now - last) / 1000);
+  const dt = clamp(rawDt, 0.001, 0.05); // Safe clamp for physics simulation integration
   last = now;
 
+  const simStart = performance.now();
   tick(dt);
+  const simTimeMs = performance.now() - simStart;
+
   render();
-  updatePerformanceMetrics(now, dt);
+  updatePerformanceMetrics(now, rawDt, simTimeMs);
 
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// ==========================================
+// OPERATOR CONFIGURATION MODAL CONTROLLER
+// ==========================================
+function openOperatorConfig() {
+  if (!ui.operatorModal) return;
+  ui.cfgMode.value = config.mode;
+  ui.cfgEventTitle.value = config.eventName;
+  ui.cfgEventSubtitle.value = config.eventSubtitle;
+  ui.cfgDuration.value = String(config.resultDuration);
+  ui.cfgDurationVal.textContent = config.resultDuration + 's';
+  ui.cfgMasterVol.value = String(Math.round(config.masterVolume * 100));
+  ui.cfgVolVal.textContent = Math.round(config.masterVolume * 100) + '%';
+  ui.cfgSfxVol.value = String(Math.round(config.sfxVolume * 100));
+  ui.cfgSfxVal.textContent = Math.round(config.sfxVolume * 100) + '%';
+  ui.cfgQuality.value = qualityPreset;
+  ui.cfgFpsToggle.checked = showFpsHud;
+  ui.cfgAutoReset.checked = config.autoReset;
+  ui.operatorModal.classList.add('open');
+}
+
+function closeOperatorConfig() {
+  if (ui.operatorModal) ui.operatorModal.classList.remove('open');
+}
+
+function saveOperatorConfig() {
+  config.mode = ui.cfgMode.value;
+  config.eventName = ui.cfgEventTitle.value;
+  config.eventSubtitle = ui.cfgEventSubtitle.value;
+  config.resultDuration = parseInt(ui.cfgDuration.value, 10);
+  config.masterVolume = parseInt(ui.cfgMasterVol.value, 10) / 100;
+  config.sfxVolume = parseInt(ui.cfgSfxVol.value, 10) / 100;
+  qualityPreset = ui.cfgQuality.value;
+  effectiveQuality = qualityPreset === 'auto' ? 'high' : qualityPreset;
+  config.autoReset = ui.cfgAutoReset.checked;
+
+  if (ui.brandTitle) ui.brandTitle.textContent = config.eventName;
+  if (ui.brandSubtitle) ui.brandSubtitle.textContent = config.eventSubtitle;
+
+  if (ui.cfgFpsToggle.checked !== showFpsHud) {
+    toggleFpsHud();
+  }
+
+  resize();
+  closeOperatorConfig();
+}
+
+ui.configBtn?.addEventListener('click', openOperatorConfig);
+ui.closeConfig?.addEventListener('click', closeOperatorConfig);
+ui.saveConfig?.addEventListener('click', saveOperatorConfig);
+
+ui.cfgDuration?.addEventListener('input', () => {
+  ui.cfgDurationVal.textContent = ui.cfgDuration.value + 's';
+});
+ui.cfgMasterVol?.addEventListener('input', () => {
+  ui.cfgVolVal.textContent = ui.cfgMasterVol.value + '%';
+});
+ui.cfgSfxVol?.addEventListener('input', () => {
+  ui.cfgSfxVal.textContent = ui.cfgSfxVol.value + '%';
+});
 
 // ==========================================
 // INPUT CONTROLLER & KIOSK PROTECTION
@@ -1566,13 +1516,22 @@ document.addEventListener('keyup', ev => heldKeys.delete(ev.code));
 addEventListener('blur', () => heldKeys.clear());
 
 document.addEventListener('keydown', ev => {
-  // Developer & Operator Shortcuts
+  // Operator Config Modal Toggle (Shift + O)
+  if (ev.shiftKey && ev.code === 'KeyO') {
+    ev.preventDefault();
+    if (ui.operatorModal && ui.operatorModal.classList.contains('open')) closeOperatorConfig();
+    else openOperatorConfig();
+    return;
+  }
+
+  // Developer FPS HUD Toggle (Shift + F)
   if (ev.shiftKey && ev.code === 'KeyF') {
     ev.preventDefault();
     toggleFpsHud();
     return;
   }
 
+  // Developer Panel Toggle (Shift + D)
   if (ev.shiftKey && ev.code === 'KeyD') {
     ev.preventDefault();
     ui.debug.classList.toggle('on');
@@ -1585,7 +1544,7 @@ document.addEventListener('keydown', ev => {
   heldKeys.add(ev.code);
 
   const tg = ev.target;
-  if (tg instanceof Element && tg.closest('#mute,#fullscreen,#skip,#forceReset,#forceOutcome,#perfHud')) return;
+  if (tg instanceof Element && tg.closest('#mute,#fullscreen,#skip,#forceReset,#forceOutcome,#perfHud,#operatorModal,#configBtn')) return;
   ev.preventDefault();
   start();
 });
@@ -1597,7 +1556,7 @@ ui.mute.addEventListener('click', () => {
   ui.mute.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
   if (!muted) {
     soundStart();
-    playSynthTone({ freq: 750, duration: 0.12, type: 'sine', volume: 0.022 });
+    playSynthTone({ freq: 750, duration: 0.12, type: 'sine', volume: 0.20 });
   }
 });
 
@@ -1615,6 +1574,10 @@ ui.fullscreen.addEventListener('click', async () => {
 if (urlParams.has('debug')) {
   ui.debug.classList.add('on');
 }
+if (urlParams.has('config') || urlParams.has('operator')) {
+  openOperatorConfig();
+}
+
 $('skip')?.addEventListener('click', () => {
   if (state === 'idle') start();
   if (state === 'launch' || state === 'playing') capture();
@@ -1644,6 +1607,7 @@ Object.defineProperty(window, '__techDropQA', {
       trackPoints: track.length,
       landingX: track.at(-1)?.x,
       expectedX: slotCenter(target),
+      landingPos,
       particles: particlePool.filter(p => p.active).length,
       fps: currentFps,
       smoothedFps,
@@ -1663,6 +1627,8 @@ Object.defineProperty(window, '__techDropQA', {
       if (state === 'capture') reveal();
     },
     toggleFps: toggleFpsHud,
+    openConfig: openOperatorConfig,
+    closeConfig: closeOperatorConfig,
     setQuality: q => {
       qualityPreset = q;
       effectiveQuality = q;
