@@ -408,19 +408,46 @@ resize();
 
 // ==========================================
 // PROCEDURAL WEB AUDIO SYNTHESIZER
-// Zero CDN dependencies, 100% offline
+// High-Impact Arcade Acoustics, Zero CDNs, 100% Offline
 // ==========================================
+let masterCompressor = null, masterGain = null;
+
 const soundStart = () => {
   if (muted) return;
   try {
     audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (audioContext.state === 'suspended') audioContext.resume();
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    if (!masterCompressor && audioContext) {
+      masterCompressor = audioContext.createDynamicsCompressor();
+      masterCompressor.threshold.setValueAtTime(-16, audioContext.currentTime);
+      masterCompressor.knee.setValueAtTime(10, audioContext.currentTime);
+      masterCompressor.ratio.setValueAtTime(8, audioContext.currentTime);
+      masterCompressor.attack.setValueAtTime(0.002, audioContext.currentTime);
+      masterCompressor.release.setValueAtTime(0.12, audioContext.currentTime);
+
+      masterGain = audioContext.createGain();
+      masterGain.gain.setValueAtTime(1.0, audioContext.currentTime);
+
+      masterGain.connect(masterCompressor);
+      masterCompressor.connect(audioContext.destination);
+    }
   } catch (e) {
     muted = true;
   }
 };
 
-// Polyphony Voice Limiter (max 7 concurrent voices)
+// Global user-gesture audio unlocker
+const unlockAudioOnGesture = () => {
+  soundStart();
+  window.removeEventListener('pointerdown', unlockAudioOnGesture);
+  window.removeEventListener('keydown', unlockAudioOnGesture);
+};
+window.addEventListener('pointerdown', unlockAudioOnGesture, { once: true });
+window.addEventListener('keydown', unlockAudioOnGesture, { once: true });
+
+// Polyphony Voice Limiter (max 8 concurrent voices)
 const activeVoices = [];
 function pruneVoices() {
   const now = audioContext ? audioContext.currentTime : 0;
@@ -431,13 +458,13 @@ function pruneVoices() {
   }
 }
 
-function playSynthTone({ freq, duration = 0.08, type = 'sine', volume = 0.02, delay = 0, freqTo = null, pan = 0, filterFreq = null }) {
+function playSynthTone({ freq, duration = 0.08, type = 'sine', volume = 0.15, delay = 0, freqTo = null, pan = 0, filterFreq = null }) {
   if (muted) return;
   try {
     soundStart();
-    if (!audioContext) return;
+    if (!audioContext || !masterGain) return;
     pruneVoices();
-    if (activeVoices.length >= 7) {
+    if (activeVoices.length >= 8) {
       const oldest = activeVoices.shift();
       try { oldest.gain.gain.setValueAtTime(0.0001, audioContext.currentTime); } catch (e) {}
     }
@@ -448,13 +475,13 @@ function playSynthTone({ freq, duration = 0.08, type = 'sine', volume = 0.02, de
     const effectiveVol = volume * config.sfxVolume * config.masterVolume;
 
     osc.type = type;
-    osc.frequency.setValueAtTime(Math.max(freq, 40), now);
+    osc.frequency.setValueAtTime(Math.max(freq, 35), now);
     if (freqTo) {
-      osc.frequency.exponentialRampToValueAtTime(Math.max(freqTo, 40), now + duration);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(freqTo, 35), now + duration);
     }
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(effectiveVol, now + Math.min(0.015, duration * 0.2));
+    gain.gain.exponentialRampToValueAtTime(effectiveVol, now + Math.min(0.012, duration * 0.18));
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     let lastNode = gain;
@@ -473,97 +500,112 @@ function playSynthTone({ freq, duration = 0.08, type = 'sine', volume = 0.02, de
     // Positional Stereo Panning
     if (audioContext.createStereoPanner) {
       const panner = audioContext.createStereoPanner();
-      panner.pan.setValueAtTime(clamp(pan, -0.9, 0.9), now);
+      panner.pan.setValueAtTime(clamp(pan, -0.85, 0.85), now);
       gain.connect(panner);
       lastNode = panner;
     }
 
-    lastNode.connect(audioContext.destination);
+    lastNode.connect(masterGain);
     osc.start(now);
-    osc.stop(now + duration + 0.02);
+    osc.stop(now + duration + 0.03);
 
-    activeVoices.push({ gain, endTime: now + duration + 0.02 });
+    activeVoices.push({ gain, endTime: now + duration + 0.03 });
   } catch (e) {}
 }
 
 function launchSound() {
-  playSynthTone({ freq: 95, duration: 0.42, type: 'sawtooth', volume: 0.035, freqTo: 280 });
-  playSynthTone({ freq: 620, duration: 0.16, type: 'sine', volume: 0.03, delay: 0.14, freqTo: 850 });
-  playSynthTone({ freq: 920, duration: 0.18, type: 'triangle', volume: 0.025, delay: 0.26, freqTo: 1300 });
+  // Deep pneumatic bass drop
+  playSynthTone({ freq: 90, duration: 0.45, type: 'sawtooth', volume: 0.28, freqTo: 260 });
+  // Ascending electromagnetic charge
+  playSynthTone({ freq: 480, duration: 0.22, type: 'sine', volume: 0.24, delay: 0.12, freqTo: 950 });
+  // High-frequency plasma ionization
+  playSynthTone({ freq: 880, duration: 0.25, type: 'triangle', volume: 0.22, delay: 0.24, freqTo: 1450 });
 }
 
 function hitSound(ev) {
-  const normForce = clamp(ev.force / 140, 0.15, 1.0);
+  const normForce = clamp(ev.force / 120, 0.15, 1.0);
   const pan = clamp((ev.x - 270) / 240, -0.85, 0.85);
 
-  // Base metallic strike
-  const baseFreq = 420 + (ev.peg % 8) * 85 + normForce * 220;
+  // 1. Crisp high-frequency strike transient (metallic tactile snap)
   playSynthTone({
-    freq: baseFreq,
-    duration: 0.035 + normForce * 0.045,
-    type: 'sine',
-    volume: 0.006 + normForce * 0.018,
-    freqTo: baseFreq * 0.7,
+    freq: 1800 + (ev.peg % 8) * 120,
+    duration: 0.02,
+    type: 'triangle',
+    volume: 0.08 + normForce * 0.12,
+    freqTo: 800,
     pan
   });
 
-  // Heavy punch transient for hard collisions
-  if (ev.force > 85) {
+  // 2. Resonant tonal bell body
+  const baseFreq = 480 + (ev.peg % 8) * 90 + normForce * 240;
+  playSynthTone({
+    freq: baseFreq,
+    duration: 0.045 + normForce * 0.06,
+    type: 'sine',
+    volume: 0.10 + normForce * 0.16,
+    freqTo: baseFreq * 0.75,
+    pan
+  });
+
+  // 3. Sub-bass kinetic punch on forceful impacts
+  if (ev.force > 55) {
     playSynthTone({
-      freq: 120,
-      duration: 0.065,
+      freq: 110,
+      duration: 0.075,
       type: 'triangle',
-      volume: 0.012 + normForce * 0.015,
-      freqTo: 55,
+      volume: 0.12 + normForce * 0.18,
+      freqTo: 45,
       pan
     });
   }
 }
 
 function captureSound() {
-  playSynthTone({ freq: 90, duration: 0.6, type: 'sawtooth', volume: 0.035, freqTo: 450 });
-  playSynthTone({ freq: 520, duration: 0.35, type: 'triangle', volume: 0.04, delay: 0.15, freqTo: 880 });
-  playSynthTone({ freq: 1100, duration: 0.25, type: 'sine', volume: 0.03, delay: 0.38, freqTo: 1400 });
+  // Massive energy lock sub-impact
+  playSynthTone({ freq: 75, duration: 0.65, type: 'sawtooth', volume: 0.35, freqTo: 480 });
+  playSynthTone({ freq: 520, duration: 0.40, type: 'triangle', volume: 0.32, delay: 0.14, freqTo: 980 });
+  playSynthTone({ freq: 1150, duration: 0.32, type: 'sine', volume: 0.28, delay: 0.35, freqTo: 1600 });
 }
 
-// 6 Unique Victory Fanfares
+// 6 Unique Victory Fanfares (Rich Harmonic Chords & Motifs)
 function playVictoryTheme(outcomeIndex) {
   const t = THEMES[outcomeIndex];
   switch (outcomeIndex) {
-    case 0: // AI Architect: Neural Arpeggio
-      [392, 493.88, 587.33, 783.99, 987.77, 1174.66].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.35, type: 'sine', volume: 0.028, delay: i * 0.09, freqTo: f * 1.05 });
+    case 0: // AI Architect: Ascending Neural Arpeggio
+      [392, 493.88, 587.33, 783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.38, type: 'sine', volume: 0.22, delay: i * 0.085, freqTo: f * 1.04 });
       });
-      playSynthTone({ freq: 196, duration: 0.8, type: 'triangle', volume: 0.035, delay: 0.0, freqTo: 294 });
+      playSynthTone({ freq: 196, duration: 0.9, type: 'triangle', volume: 0.28, delay: 0.0, freqTo: 294 });
       break;
-    case 1: // Cyber Guardian: Heavy Shield Pulse
-      [146.83, 220, 293.66, 440, 587.33].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.45, type: 'sawtooth', volume: 0.03, delay: i * 0.12, freqTo: f * 1.02 });
+    case 1: // Cyber Guardian: Heavy Shield Pulse & Resonant Fifths
+      [146.83, 220, 293.66, 440, 587.33, 880].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.48, type: 'sawtooth', volume: 0.24, delay: i * 0.11, freqTo: f * 1.02 });
       });
-      playSynthTone({ freq: 73.4, duration: 1.0, type: 'sine', volume: 0.045, delay: 0.0 });
+      playSynthTone({ freq: 73.4, duration: 1.1, type: 'sine', volume: 0.34, delay: 0.0 });
       break;
-    case 2: // Code Creator: Algorithmic Chiptune Cascade
-      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.2, type: 'triangle', volume: 0.025, delay: i * 0.075 });
+    case 2: // Code Creator: Algorithmic Chiptune Triad
+      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.22, type: 'triangle', volume: 0.20, delay: i * 0.07 });
       });
-      playSynthTone({ freq: 261.63, duration: 0.75, type: 'sine', volume: 0.035, delay: 0.2 });
+      playSynthTone({ freq: 261.63, duration: 0.85, type: 'sine', volume: 0.28, delay: 0.18 });
       break;
     case 3: // Data Detective: Crystal Marimba Sweep
-      [440, 554.37, 659.25, 880, 1108.73, 1318.51].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.38, type: 'sine', volume: 0.026, delay: i * 0.1, freqTo: f * 0.95 });
+      [440, 554.37, 659.25, 880, 1108.73, 1318.51, 1760.0].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.38, type: 'sine', volume: 0.22, delay: i * 0.09, freqTo: f * 0.96 });
       });
+      playSynthTone({ freq: 220, duration: 0.75, type: 'triangle', volume: 0.25, delay: 0.0 });
       break;
     case 4: // Cloud Pilot: Ethereal Floating Horizon
-      [349.23, 440, 523.25, 698.46, 880, 1046.5].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.55, type: 'sine', volume: 0.025, delay: i * 0.13, freqTo: f * 1.01 });
+      [349.23, 440, 523.25, 698.46, 880, 1046.5, 1396.9].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.6, type: 'sine', volume: 0.22, delay: i * 0.12, freqTo: f * 1.01 });
       });
-      playSynthTone({ freq: 174.61, duration: 1.1, type: 'triangle', volume: 0.03, delay: 0 });
+      playSynthTone({ freq: 174.61, duration: 1.2, type: 'triangle', volume: 0.28, delay: 0 });
       break;
-    case 5: // UX Inventor: Playful Harmonized Chime
-      [493.88, 622.25, 739.99, 987.77, 1244.51, 1479.98].forEach((f, i) => {
-        playSynthTone({ freq: f, duration: 0.32, type: 'triangle', volume: 0.028, delay: i * 0.095, freqTo: f * 1.04 });
+    case 5: // UX Inventor: Playful Harmonized FM Chime
+      [493.88, 622.25, 739.99, 987.77, 1244.51, 1479.98, 1975.53].forEach((f, i) => {
+        playSynthTone({ freq: f, duration: 0.35, type: 'triangle', volume: 0.24, delay: i * 0.088, freqTo: f * 1.04 });
       });
-      playSynthTone({ freq: 246.94, duration: 0.7, type: 'sine', volume: 0.032, delay: 0.1 });
+      playSynthTone({ freq: 246.94, duration: 0.8, type: 'sine', volume: 0.28, delay: 0.09 });
       break;
   }
 }
