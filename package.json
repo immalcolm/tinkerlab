@@ -1,0 +1,29 @@
+{
+  "name": "tinkerlab",
+  "version": "1.0.0",
+  "description": "TinkerLab — Small experiments. Big ideas. A creative playground for code, creativity and curiosity.",
+  "main": "index.html",
+  "scripts": {
+    "build": "node scripts/build_v3.js",
+    "benchmark": "node scripts/physics_benchmark.js",
+    "test": "node scripts/test_homepage.js && node scripts/test_v3.js",
+    "test:v3": "node scripts/test_v3.js",
+    "test:home": "node scripts/test_homepage.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/immalcolm/tinkerlab.git"
+  },
+  "keywords": [
+    "creative-coding",
+    "physics-engine",
+    "web-audio",
+    "interactive-installation",
+    "np-ict"
+  ],
+  "author": "Malcolm",
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer-core": "^25.15.0"
+  }
+}
