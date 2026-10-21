@@ -11,7 +11,7 @@ const reveals = fs.readFileSync(path.join(dir, 'reveal_engine.js'), 'utf8');
 const combinedJs = `// TECH DROP 5.0 Standalone Distribution\n${physics}\n\n${reveals}\n\n${game}`;
 
 const output = template
-  .replace('__CSS__', css)
+  .replace('/*__CSS__*/', css)
   .replace('__JS__', combinedJs);
 
 fs.writeFileSync(path.join(dir, 'index.html'), output, 'utf8');

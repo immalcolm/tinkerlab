@@ -38,7 +38,7 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
   const gameSrc = fs.readFileSync(path.join(V3_DIR, 'game.js'), 'utf8');
   const revealSrc = fs.readFileSync(path.join(V3_DIR, 'reveal_engine.js'), 'utf8');
   const expectedHtml = template
-    .replace('__CSS__', css)
+    .replace('/*__CSS__*/', css)
     .replace('__JS__', `// TECH DROP 5.0 Standalone Distribution\n${physicsSrc}\n\n${revealSrc}\n\n${gameSrc}`);
   const actualHtml = fs.readFileSync(path.join(V3_DIR, 'index.html'), 'utf8');
 

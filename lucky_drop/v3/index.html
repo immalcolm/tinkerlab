@@ -35,6 +35,38 @@ body {
 }
 button { font: inherit; }
 [hidden] { display: none !important; }
+.device-notice {
+  position: fixed;
+  z-index: 200;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #d8ff3e80;
+  border-radius: 12px;
+  background: #071024f5;
+  box-shadow: 0 8px 32px #0008;
+  color: #f4f7ff;
+  font: 14px/1.5 var(--font-main);
+}
+.device-notice strong { color: var(--acid); }
+.device-notice p { margin-top: 8px; }
+.device-notice button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #7e94b4;
+  border-radius: 8px;
+  background: #14243a;
+  color: #f4f7ff;
+  cursor: pointer;
+}
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #ffffff; outline-offset: 4px; }
 
 #app {
@@ -1113,7 +1145,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 <div class="debug" id="debug">
   <strong>TECH DROP 5.0 / QA</strong>
   <div id="debugStatus">IDLE</div>
-  <small>Next outcome</small>
+  <label for="forceOutcome"><small>Next outcome</small></label>
   <select id="forceOutcome">
     <option value="-1">Discovery Mode (Pure Physics)</option>
     <option value="0">AI Architect (Slot 0)</option>
@@ -1180,6 +1212,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 </div>
 
 </main></div>
+<aside id="deviceNotice" class="device-notice" hidden aria-labelledby="deviceNoticeTitle">
+  <div>
+    <strong id="deviceNoticeTitle">Device settings</strong>
+    <div id="deviceNoticeMessages" role="status" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <button id="dismissDeviceNotice" type="button" aria-label="Dismiss device settings notice">Got it</button>
+</aside>
 <script>// TECH DROP 5.0 Standalone Distribution
 /**
  * TECH DROP 5.0 — Authoritative Physics Simulation Engine
@@ -1828,6 +1867,35 @@ const ui = {
   brandTitle: $('brandTitle'),
   brandSubtitle: $('brandSubtitle')
 };
+ui.deviceNotice = $('deviceNotice');
+ui.deviceNoticeMessages = $('deviceNoticeMessages');
+let deviceNoticeDismissed = false;
+const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function updateDeviceNotice() {
+  const messages = [];
+  if (reducedMotion) {
+    messages.push('Reduced Motion is on. Some effects and reveal animations are intentionally still. For full animation, turn off Reduce Motion in your device’s Accessibility settings.');
+  }
+  if (isIOSDevice) {
+    messages.push('iPhone/iPad sound tip: check Silent Mode and media volume if you can’t hear the game.');
+  }
+  ui.deviceNotice.hidden = deviceNoticeDismissed || messages.length === 0 || state !== 'idle' || ui.operatorModal.classList.contains('open');
+  if (ui.deviceNoticeMessages.textContent !== messages.join('')) {
+    ui.deviceNoticeMessages.replaceChildren(...messages.map(text => {
+      const paragraph = document.createElement('p');
+      paragraph.textContent = text;
+      return paragraph;
+    }));
+  }
+}
+
+$('dismissDeviceNotice').addEventListener('click', () => {
+  deviceNoticeDismissed = true;
+  updateDeviceNotice();
+  if (state === 'idle') ui.start.focus({ preventScroll: true });
+});
 
 // ==========================================
 // SIX TECH SUPERPOWER THEMES & BESPOKE EMBLEMS
@@ -1943,7 +2011,11 @@ try {
 } catch (_) { /* File-mode kiosks may prohibit local storage. */ }
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 let reducedMotion = motionQuery.matches;
-motionQuery.addEventListener('change', e => { reducedMotion = e.matches; });
+motionQuery.addEventListener('change', e => {
+  reducedMotion = e.matches;
+  if (e.matches) deviceNoticeDismissed = false;
+  updateDeviceNotice();
+});
 let qualityPreset = urlParams.get('quality') || (urlParams.has('lite') ? 'low' : savedQuality);
 if (!['high', 'medium', 'low', 'auto'].includes(qualityPreset)) qualityPreset = 'high';
 let effectiveQuality = qualityPreset === 'auto' ? 'high' : qualityPreset;
@@ -2544,6 +2616,7 @@ function setState(next) {
     ui.bottom.inert = true;
     ui.hero.classList.add('faded');
   }
+  updateDeviceNotice();
 }
 
 function announce(s) {
@@ -3164,6 +3237,7 @@ function openOperatorConfig() {
   ui.operatorModal.inert = false;
   ui.operatorModal.setAttribute('aria-hidden', 'false');
   ui.closeConfig.focus();
+  updateDeviceNotice();
 }
 
 function closeOperatorConfig() {
@@ -3172,6 +3246,7 @@ function closeOperatorConfig() {
     ui.operatorModal.inert = true;
     ui.operatorModal.setAttribute('aria-hidden', 'true');
     stage.focus({ preventScroll: true });
+    updateDeviceNotice();
   }
 }
 
