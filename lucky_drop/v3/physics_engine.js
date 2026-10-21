@@ -1,7 +1,13 @@
 /**
- * TECH DROP 4.0 — Authoritative Physics Simulation Engine
+ * TECH DROP 5.0 — Authoritative Physics Simulation Engine
  * True Continuous Collision Detection (CCD), Swept Circle Solvers,
- * Contact Normals, Angular Spin Dynamics, and Deterministic Replay.
+ * Contact Normals, Coulomb Friction, Angular Spin Dynamics, and Deterministic Replay.
+ *
+ * Scaled Flagship Geometry:
+ * - Playfield occupies 74.5% of vertical screen space
+ * - Large 29px diameter ball (radius 14.5px)
+ * - Large 16px diameter pegs (radius 8.0px), 90 pegs across 12 staggered rows
+ * - 6 wide collector slots (80px width each)
  * 
  * Works in both Node.js (automated QA & benchmarks) and browser environments.
  */
@@ -16,34 +22,35 @@
   'use strict';
 
   const W = 540, H = 960;
-  const PEG_ROWS = 9;
-  const BALL_RADIUS = 9.5;
-  const PEG_RADIUS = 6.2;
-  const COMBINED_RADIUS = BALL_RADIUS + PEG_RADIUS; // 15.7px
+  const PEG_ROWS = 12;
+  const BALL_RADIUS = 14.5; // Diameter 29px
+  const PEG_RADIUS = 8.0;   // Diameter 16px
+  const COMBINED_RADIUS = BALL_RADIUS + PEG_RADIUS; // 22.5px
   const COMBINED_RADIUS_SQ = COMBINED_RADIUS * COMBINED_RADIUS;
   
   const SLOT_COUNT = 6;
-  const BOARD_LEFT = 46;
-  const BOARD_RIGHT = 494;
-  const TOTAL_SLOT_WIDTH = BOARD_RIGHT - BOARD_LEFT; // 448px
-  const SLOT_WIDTH = TOTAL_SLOT_WIDTH / SLOT_COUNT; // 74.667px
+  const BOARD_LEFT = 30;
+  const BOARD_RIGHT = 510;
+  const TOTAL_SLOT_WIDTH = BOARD_RIGHT - BOARD_LEFT; // 480px
+  const SLOT_WIDTH = TOTAL_SLOT_WIDTH / SLOT_COUNT;  // 80.0px
   
-  // Floor and dividers geometry
-  const FLOOR_Y = 762;
-  const DIVIDER_TOP_Y = 736;
-  const DIVIDER_BOTTOM_Y = 775;
-  const DIVIDER_CAP_RADIUS = 3.5;
+  // Floor and dividers geometry (74.5% board coverage)
+  const FLOOR_Y = 812;
+  const DIVIDER_TOP_Y = 750;
+  const DIVIDER_BOTTOM_Y = 825;
+  const DIVIDER_CAP_RADIUS = 4.0;
 
-  // Build peg array
+  // Build 90-peg array (12 staggered rows: 8 pegs, 7 pegs, 8 pegs...)
   const PEGS = [];
   for (let r = 0; r < PEG_ROWS; r++) {
-    const cols = r % 2 ? 8 : 9;
-    const startX = r % 2 ? 91 : 65;
+    const isRowA = r % 2 === 0;
+    const cols = isRowA ? 8 : 7;
+    const startX = isRowA ? 81 : 108;
     for (let c = 0; c < cols; c++) {
       PEGS.push({
         index: PEGS.length,
-        x: startX + c * 50,
-        y: 381 + r * 39.3,
+        x: startX + c * 54,
+        y: 205 + r * 46,
         r,
         col: c,
         id: `${r}-${c}`
@@ -95,12 +102,14 @@
 
     // Already overlapping or touching
     if (distSq <= radiusSq) {
-      const dist = Math.sqrt(distSq) || 0.001;
+      const dist = Math.sqrt(distSq);
+      // Exact coincident centres have no geometric normal; oppose incoming motion.
+      const speed = Math.hypot(deltax, deltay) || 1;
       return {
         hit: true,
         s: 0,
-        nx: dx / dist,
-        ny: dy / dist,
+        nx: dist > 1e-9 ? dx / dist : -deltax / speed,
+        ny: dist > 1e-9 ? dy / dist : -deltay / speed,
         overlap: radius - dist
       };
     }
@@ -112,20 +121,20 @@
     const C = distSq - radiusSq;
     const discr = B * B - 4 * A * C;
 
-    if (discr < 0) return null; // Missed
+    if (discr < 0) return null; // Ray misses circle entirely
 
     const sqrtDiscr = Math.sqrt(discr);
-    const s = (-B - sqrtDiscr) / (2 * A);
+    const s1 = (-B - sqrtDiscr) / (2 * A);
 
-    if (s >= 0 && s <= 1.0) {
-      const hitX = p0x + s * deltax;
-      const hitY = p0y + s * deltay;
-      const hdx = hitX - cx;
-      const hdy = hitY - cy;
-      const hdist = Math.sqrt(hdx * hdx + hdy * hdy) || 0.001;
+    if (s1 >= 0 && s1 <= 1.0) {
+      const hx = p0x + s1 * deltax;
+      const hy = p0y + s1 * deltay;
+      const hdx = hx - cx;
+      const hdy = hy - cy;
+      const hdist = Math.sqrt(hdx * hdx + hdy * hdy) || radius;
       return {
         hit: true,
-        s,
+        s: s1,
         nx: hdx / hdist,
         ny: hdy / hdist,
         overlap: 0
@@ -136,17 +145,17 @@
   }
 
   /**
-   * Curated Natural Seed Bank
+   * Curated Natural Seed Bank for Tech Drop 5.0 (90-peg flagship geometry)
    * Pre-validated seeds for Demonstration Mode (100% natural, unmanipulated physics flight).
-   * Each seed guarantees 14–20 rich collisions and lands cleanly in the target slot.
+   * Each seed lands naturally inside its collector. Never steer a live trajectory.
    */
   const CURATED_SEEDS = [
-    [1009, 1044, 1074, 1106, 1149], // Slot 0: AI Architect (15-19 hits, 3.4-4.7s)
-    [1012, 1025, 1059, 1062, 1064], // Slot 1: Cyber Guardian (14-22 hits, 3.5-4.7s)
-    [1011, 1030, 1041, 1060, 1085], // Slot 2: Code Creator (13-18 hits, 3.1-4.0s)
-    [1031, 1034, 1038, 1061, 1082], // Slot 3: Data Detective (13-17 hits, 3.1-4.5s)
-    [1021, 1045, 1073, 1099, 1112], // Slot 4: Cloud Pilot (14-19 hits, 3.1-4.5s)
-    [1015, 1048, 1161, 1350, 1454]  // Slot 5: UX Inventor (16-21 hits, 3.6-4.2s)
+    [1000, 1003, 1007, 1009, 1014],
+    [1004, 1010, 1013, 1029, 1030],
+    [1005, 1011, 1012, 1018, 1019],
+    [1002, 1006, 1008, 1035, 1060],
+    [1001, 1017, 1020, 1025, 1049],
+    [1023, 1034, 1036, 1073, 1078]
   ];
 
   /**
@@ -157,18 +166,18 @@
   function simulateTrajectory(seed, options = {}) {
     const rng = createRng(seed);
     const dt = 1 / 240; // 240Hz sub-step
-    const maxSteps = 240 * (options.maxDuration || 6.5);
-    const gravity = 860;
-    const restitutionPeg = 0.66;
-    const restitutionWall = 0.60;
+    const maxSteps = Math.ceil(240 * (options.maxDuration ?? 16));
+    const gravity = 1260; // Tuned for punchy weight and acceleration
+    const restitutionPeg = 0.65;
+    const restitutionWall = 0.55;
     const frictionPeg = 0.22;
-    const wallLeft = 52 + BALL_RADIUS;
-    const wallRight = 488 - BALL_RADIUS;
+    const wallLeft = BOARD_LEFT + BALL_RADIUS;
+    const wallRight = BOARD_RIGHT - BALL_RADIUS;
 
-    let x = 270 + (options.initialOffsetX || (rng() - 0.5) * 12);
-    let y = 338;
-    let vx = options.initialVx || (rng() - 0.5) * 32;
-    let vy = 48 + rng() * 24;
+    let x = 270 + (options.initialOffsetX ?? (rng() - 0.5) * 2.2);
+    let y = 145; // Launcher release elevation
+    let vx = options.initialVx ?? (rng() - 0.5) * 16;
+    let vy = 40 + rng() * 20;
     let spin = 0; // Angular velocity in radians/sec
 
     const hits = [];
@@ -176,38 +185,33 @@
     let consecutiveSamePegCount = 0;
     let lastPegHitIndex = -1;
 
-    for (let step = 0; step < maxSteps; step++) {
+    simulationLoop: for (let step = 0; step < maxSteps; step++) {
       const t = step * dt;
 
-      // Integrate gravity and air damping
+      // Integrate gravity and aerodynamic drag
       vy += gravity * dt;
-      vx *= (1 - 0.09 * dt);
-      vy *= (1 - 0.09 * dt);
-
-      // Progressive safety forward momentum if drop exceeds 4.5s
-      if (t > 4.5) {
-        vy = Math.max(vy, 180 + (t - 4.5) * 110);
-      }
+      vx *= (1 - 0.035 * dt);
+      vy *= (1 - 0.015 * dt);
 
       let remainingSubStep = 1.0; // Portion of dt remaining in current step
       let iter = 0;
 
-      while (remainingSubStep > 1e-4 && iter < 4) {
+      while (remainingSubStep > 1e-4 && iter < 8) {
         iter++;
         const stepDt = dt * remainingSubStep;
         let deltaX = vx * stepDt;
         let deltaY = vy * stepDt;
 
-        // Check swept collision against all pegs
+        // Check swept collision against all 90 pegs
         let earliestHit = null;
         let hitType = null;
         let hitObject = null;
 
         for (let i = 0; i < PEGS.length; i++) {
           const p = PEGS[i];
-          // Quick vertical reject
-          if (p.y < y - 35 || p.y > y + deltaY + 35) continue;
-          if (p.x < x - 35 || p.x > x + Math.abs(deltaX) + 35) continue;
+          // Quick vertical and horizontal bounding reject
+          if (p.y < Math.min(y, y + deltaY) - COMBINED_RADIUS || p.y > Math.max(y, y + deltaY) + COMBINED_RADIUS) continue;
+          if (p.x < Math.min(x, x + deltaX) - COMBINED_RADIUS || p.x > Math.max(x, x + deltaX) + COMBINED_RADIUS) continue;
 
           const res = checkSweptCircle(x, y, deltaX, deltaY, p.x, p.y, COMBINED_RADIUS, COMBINED_RADIUS_SQ);
           if (res && (!earliestHit || res.s < earliestHit.s)) {
@@ -218,15 +222,31 @@
         }
 
         // Check swept collision against bin dividers
-        for (let i = 0; i < DIVIDERS.length; i++) {
-          const d = DIVIDERS[i];
-          const divRadius = BALL_RADIUS + d.radius;
-          const divRadiusSq = divRadius * divRadius;
-          const res = checkSweptCircle(x, y, deltaX, deltaY, d.x, d.yTop, divRadius, divRadiusSq);
-          if (res && (!earliestHit || res.s < earliestHit.s)) {
-            earliestHit = res;
-            hitType = 'divider';
-            hitObject = d;
+        if (Math.max(y, y + deltaY) + BALL_RADIUS + DIVIDER_CAP_RADIUS >= DIVIDER_TOP_Y) {
+          for (let i = 0; i < DIVIDERS.length; i++) {
+            const d = DIVIDERS[i];
+            const divRadius = BALL_RADIUS + d.radius;
+            const divRadiusSq = divRadius * divRadius;
+            const res = checkSweptCircle(x, y, deltaX, deltaY, d.x, d.yTop, divRadius, divRadiusSq);
+            if (res && (!earliestHit || res.s < earliestHit.s)) {
+              earliestHit = res;
+              hitType = 'divider';
+              hitObject = d;
+            }
+            // The cap and vertical sides form one capsule. Test the sides too:
+            // a cap-only solver allows the ball to cross between collectors.
+            if (Math.abs(deltaX) > 1e-9) {
+              const nx = deltaX > 0 ? -1 : 1;
+              const sideX = d.x + nx * divRadius;
+              const sideT = (sideX - x) / deltaX;
+              const sideY = y + deltaY * sideT;
+              if (sideT >= 0 && sideT <= 1 && sideY >= d.yTop && sideY <= d.yBottom &&
+                  (!earliestHit || sideT < earliestHit.s)) {
+                earliestHit = { hit: true, s: sideT, nx, ny: 0, overlap: 0 };
+                hitType = 'divider';
+                hitObject = d;
+              }
+            }
           }
         }
 
@@ -242,6 +262,18 @@
           if (sWall <= 1.0 && (!earliestHit || sWall < earliestHit.s)) {
             earliestHit = { hit: true, s: sWall, nx: -1, ny: 0, overlap: 0 };
             hitType = 'wall_right';
+          }
+        }
+
+        // Resolve the floor in the same sweep as pegs, dividers and walls.
+        // Interpolating recorded frames can span a bounce and invent contact X/time.
+        if (deltaY > 0 && y + deltaY >= FLOOR_Y) {
+          const floorS = (FLOOR_Y - y) / deltaY;
+          if (!earliestHit || floorS < earliestHit.s) {
+            x += deltaX * floorS;
+            y = FLOOR_Y;
+            trajectory.push({ t: t + dt - stepDt + floorS * stepDt, x, y, vx, vy, spin });
+            break simulationLoop;
           }
         }
 
@@ -269,13 +301,7 @@
               lastPegHitIndex = p.index;
             }
 
-            if (consecutiveSamePegCount > 2) {
-              // Pinch/chatter resolution
-              vx = nx * 85;
-              vy = Math.max(vy + 45, 80);
-              x += nx * 1.5;
-              y += ny * 1.5;
-            } else if (vn < 0) {
+            if (vn < 0) {
               // Relative surface velocity at contact: v_rel = vt - BALL_RADIUS * spin
               const vRel = vt - BALL_RADIUS * spin;
               const impulseN = -(1 + restitutionPeg) * vn;
@@ -292,51 +318,48 @@
               // Spin momentum transfer opposes relative slip
               spin += (impulseT / (0.5 * BALL_RADIUS));
 
-              // Velocity damping & terminal speed clamp for physical credibility
-              const postSpeed = Math.hypot(vx, vy);
-              if (postSpeed > 680) {
-                const s = 680 / postSpeed;
-                vx *= s;
-                vy *= s;
-              }
-              spin = Math.max(-45, Math.min(45, spin * 0.96));
-
-              // Ensure steady downward velocity bias
-              if (vy < 35) vy += 35;
-
               // Classify impact energy tier
               const impactSpeed = Math.hypot(vx, vy);
               const force = Math.abs(vn);
               let tier = 1; // Light
-              if (force >= 110 || impactSpeed >= 280) tier = 3; // Major
-              else if (force >= 45 || impactSpeed >= 120) tier = 2; // Strong
+              if (force >= 140 || impactSpeed >= 320) tier = 3; // Major
+              else if (force >= 55 || impactSpeed >= 140) tier = 2; // Strong
 
-              hits.push({
-                step,
-                t: t + advanceS * stepDt,
-                peg: p.index,
-                x: p.x,
-                y: p.y,
-                nx,
-                ny,
-                force,
-                speed: impactSpeed,
-                tier
-              });
+              if (consecutiveSamePegCount <= 1) {
+                hits.push({
+                  step,
+                  t: t + dt - stepDt + advanceS * stepDt,
+                  peg: p.index,
+                  x: p.x + nx * PEG_RADIUS,
+                  y: p.y + ny * PEG_RADIUS,
+                  nx,
+                  ny,
+                  force,
+                  speed: impactSpeed,
+                  tier
+                });
+              }
             }
           } else if (hitType === 'wall_left' || hitType === 'wall_right') {
             if (vn < 0) {
-              vx = -vn * restitutionWall * nx + (hitType === 'wall_left' ? 24 : -24);
-              vy = Math.max(vy, 60);
-              spin += (hitType === 'wall_left' ? 1 : -1) * vy * 0.04;
+              vx = -vn * restitutionWall * nx;
+              spin += (hitType === 'wall_left' ? 1 : -1) * vy * 0.03;
             }
           } else if (hitType === 'divider') {
             if (vn < 0) {
               vx -= (1 + 0.5) * vn * nx;
               vy -= (1 + 0.5) * vn * ny;
-              if (vy < 40) vy = 40;
             }
           }
+
+          // Universal terminal speed & angular spin clamp
+          const postSpeed = Math.hypot(vx, vy);
+          if (postSpeed > 680) {
+            const s = 680 / postSpeed;
+            vx *= s;
+            vy *= s;
+          }
+          spin = Math.max(-45, Math.min(45, spin * 0.96));
 
           // Consume portion of step
           remainingSubStep -= advanceS * remainingSubStep;
@@ -348,27 +371,21 @@
         }
       }
 
-      // Record at 120Hz (every 2 sub-steps)
-      if (step % 2 === 0) {
-        trajectory.push({ t, x, y, vx, vy, spin });
-      }
-
-      // Landing detection at collector floor
-      if (y >= FLOOR_Y) {
-        break;
-      }
+      // Record at 120Hz (every 2 sub-steps), plus the exact floor contact above.
+      if (step % 2 === 0) trajectory.push({ t: t + dt, x, y, vx, vy, spin });
     }
 
     // Determine winning slot based on true physical landing X
     const landingX = x;
     const landingY = y;
-    let slot = Math.floor((landingX - BOARD_LEFT) / SLOT_WIDTH);
-    slot = Math.max(0, Math.min(SLOT_COUNT - 1, slot));
-    const targetCenter = SLOTS[slot].centerX;
-    const slotError = Math.abs(landingX - targetCenter);
+    const completed = y >= FLOOR_Y;
+    const slot = completed ? Math.max(0, Math.min(SLOT_COUNT - 1, Math.floor((landingX - BOARD_LEFT) / SLOT_WIDTH))) : null;
+    const targetCenter = completed ? SLOTS[slot].centerX : null;
+    const slotError = completed ? Math.abs(landingX - targetCenter) : null;
 
     return {
       seed,
+      completed,
       trajectory,
       hits,
       landingX,
@@ -376,7 +393,7 @@
       slot,
       targetCenter,
       slotError,
-      duration: trajectory[trajectory.length - 1]?.t || 4.5,
+      duration: trajectory[trajectory.length - 1]?.t || 0,
       impactCount: hits.length
     };
   }
@@ -393,6 +410,8 @@
     BOARD_RIGHT,
     SLOT_WIDTH,
     FLOOR_Y,
+    DIVIDER_TOP_Y,
+    DIVIDER_BOTTOM_Y,
     PEGS,
     SLOTS,
     DIVIDERS,

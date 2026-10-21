@@ -2,3 +2,7 @@ node_modules/
 .DS_Store
 *.log
 /tmp/
+
+# Intermediate browser recording streams (the muxed MP4 is delivery evidence).
+lucky_drop/v3/qa/round-silent.webm
+lucky_drop/v3/qa/round-audio.webm

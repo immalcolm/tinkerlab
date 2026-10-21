@@ -1,0 +1,111 @@
+
+> tinkerlab@1.0.0 test
+> node scripts/test_physics.js && node scripts/test_homepage.js && node scripts/test_v3.js && node scripts/test_v3_safeguards.js
+
+{
+  "seeds": 10000,
+  "completed": 10000,
+  "deterministicReplays": 10000,
+  "durationRange": [
+    2.646465087198253,
+    12.045681387009667
+  ],
+  "averageImpacts": 52.5148,
+  "slots": [
+    1324,
+    1491,
+    2152,
+    2175,
+    1498,
+    1360
+  ]
+}
+=== Starting TinkerLab Homepage QA Test Suite ===
+Using browser executable: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+Page Title: TinkerLab — Small experiments. Big ideas.
+Background Canvas exists: true
+Project Cards rendered: 3
+Launch Links: [
+  './lucky_drop/v3/index.html',
+  './lucky_drop/v2/index.html',
+  './lucky_drop/v1/index.html'
+]
+Thumbnails: [
+  './lucky_drop/v3/all_six_superpowers.jpg',
+  './lucky_drop/v2/preview_result.png',
+  './lucky_drop/v1/preview_v1.png'
+]
+All project thumbnails verified to exist on disk!
+Testing Category Filter...
+Cards matching "Creative Coding": 1
+Cards after reset to All: 3
+Testing Mobile Viewport (375x812)...
+=== ALL TINKERLAB HOMEPAGE TESTS PASSED! ===
+=== Starting Tech Drop 5.0 Comprehensive QA & Exhibition Test Suite ===
+Using browser executable: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+
+--- Step 0: Source Build Consistency Verification ---
+Build consistency: Standalone index.html strictly matches source modules (index.template.html, style.css, physics_engine.js, game.js).
+
+--- Step 1: 1,000 Diverse Deterministic Seeds Physics Stress & Anti-Tunnelling ---
+1,000 Seeds Physics Verification: 1000/1000 passed (100%), Avg impacts = 52.6, Range = [17, 83]
+Verifying deterministic replay reproducibility...
+Deterministic Replay: 100% bit-exact trajectory reproduction verified.
+
+--- Step 2: Browser State Machine, Audio & Operator Configuration ---
+Initial Game State: idle
+Testing Operator Modal (Shift+O)...
+Operator Modal Open after Shift+O: true
+Operator Settings Detected: {
+  title: 'NGEE ANN POLYTECHNIC',
+  mode: 'discovery',
+  duration: '5',
+  fpsHud: false
+}
+Mute clicked, state remains: idle
+Initiating Play Round...
+Round: 1 State: launch
+State transitioned to playing
+State transitioned to capture
+State transitioned to reveal: result
+Discovered Identity: "AI ARCHITECT" - What if your next idea could learn? Explore how AI turns curiosity into useful, surprising inventions.
+Waiting for auto-reset countdown...
+State after countdown: idle
+Full Round + Auto-Reset Test: PASSED
+Testing Keyboard Space trigger...
+State after Space: launch
+Testing Keyboard Enter trigger...
+State after Enter: launch
+
+--- Step 3: Performance HUD & True 1% Low Verification ---
+HUD display style after Shift+F: block
+Profiler Snapshot: { fps: 60, smoothedFps: 58, onePercentLow: 20, quality: 'medium' }
+
+--- Step 4: 30 Consecutive Round / Reset Cycles (Resource Leak & Stability Check) ---
+Cycle 10/30 complete: state=idle, activeVoices=0, activeParticles=0
+Cycle 20/30 complete: state=idle, activeVoices=0, activeParticles=0
+Cycle 30/30 complete: state=idle, activeVoices=0, activeParticles=0
+30 Cycles Complete: Zero lingering audio voices or active particles.
+
+--- Step 5: Testing All 6 Tech Superpower Presentations ---
+Outcome 0 simulation: target=0, landingX=63.8, expectedX=70.0, impacts=45
+Outcome 0 Title: "AI ARCHITECT", Tags: [NEURAL NETWORKS, GENERATIVE AI, SMART SYSTEMS, NP ICT AI], Emblem SVG length: 941
+Outcome 1 simulation: target=1, landingX=143.2, expectedX=150.0, impacts=76
+Outcome 1 Title: "CYBER GUARDIAN", Tags: [CYBER DEFENCE, ZERO TRUST, ETHICAL HACKING, NP ICT SEC], Emblem SVG length: 528
+Outcome 2 simulation: target=2, landingX=246.4, expectedX=230.0, impacts=52
+Outcome 2 Title: "CODE CREATOR", Tags: [FULL STACK, SYSTEMS ARCHITECTURE, ALGORITHMS, NP ICT DEV], Emblem SVG length: 526
+Outcome 3 simulation: target=3, landingX=316.7, expectedX=310.0, impacts=58
+Outcome 3 Title: "DATA DETECTIVE", Tags: [BIG DATA, PREDICTIVE ANALYTICS, DEEP PATTERNS, NP ICT DATA], Emblem SVG length: 507
+Outcome 4 simulation: target=4, landingX=387.2, expectedX=390.0, impacts=47
+Outcome 4 Title: "CLOUD PILOT", Tags: [DISTRIBUTED CLOUD, KUBERNETES, HYPER-SCALE, NP ICT OPS], Emblem SVG length: 416
+Outcome 5 simulation: target=5, landingX=471.1, expectedX=470.0, impacts=55
+Outcome 5 Title: "UX INVENTOR", Tags: [INTERACTION DESIGN, SPATIAL COMPUTING, HUMAN-AI UX, NP ICT DESIGN], Emblem SVG length: 505
+
+--- Step 6: Testing Responsive Viewports ---
+Viewport kiosk (1080x1920): stage rendered at 1080.0x1920.0
+Viewport phone (390x844): stage rendered at 390.0x693.3
+Viewport small_phone (360x640): stage rendered at 360.0x640.0
+Viewport landscape (1280x720): stage rendered at 405.0x720.0
+
+=== ALL TECH DROP 5.0 QA & BENCHMARK TESTS PASSED SUCCESSFULLY! ===
+Safeguards: reduced motion, sharp scaling, settings/input, neutral drop, audio mute/budget/reset, quality resizing PASS

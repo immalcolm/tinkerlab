@@ -1,0 +1,307 @@
+{
+  "count": 30,
+  "errors": [],
+  "networkRequests": [],
+  "rounds": [
+    {
+      "round": 1,
+      "outcome": 0,
+      "scene": "neural-construction",
+      "landing": {
+        "x": 68.12940308387554,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 2,
+      "outcome": 1,
+      "scene": "shield-lock",
+      "landing": {
+        "x": 163.56818653901954,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 3,
+      "outcome": 2,
+      "scene": "compiled-geometry",
+      "landing": {
+        "x": 224.14031378495378,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 4,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 311.9836738770227,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 5,
+      "outcome": 4,
+      "scene": "distributed-flight",
+      "landing": {
+        "x": 396.92157265018807,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 6,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 461.7264833172315,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 7,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 482.1614335304329,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 8,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 320.2754259480896,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 9,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 301.1684032989985,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 10,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 475.57135114907686,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 11,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 314.4342854083274,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 12,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 307.21058401496424,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 13,
+      "outcome": 2,
+      "scene": "compiled-geometry",
+      "landing": {
+        "x": 251.3746241771497,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 14,
+      "outcome": 0,
+      "scene": "neural-construction",
+      "landing": {
+        "x": 69.7525323242116,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 15,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 461.9191710861394,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 16,
+      "outcome": 0,
+      "scene": "neural-construction",
+      "landing": {
+        "x": 77.3070949303588,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 17,
+      "outcome": 1,
+      "scene": "shield-lock",
+      "landing": {
+        "x": 164.12620289878245,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 18,
+      "outcome": 2,
+      "scene": "compiled-geometry",
+      "landing": {
+        "x": 230.85968519408047,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 19,
+      "outcome": 4,
+      "scene": "distributed-flight",
+      "landing": {
+        "x": 388.548097507036,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 20,
+      "outcome": 1,
+      "scene": "shield-lock",
+      "landing": {
+        "x": 134.35870706080652,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 21,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 458.0904368201431,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 22,
+      "outcome": 2,
+      "scene": "compiled-geometry",
+      "landing": {
+        "x": 237.92130317641343,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 23,
+      "outcome": 4,
+      "scene": "distributed-flight",
+      "landing": {
+        "x": 375.11415731657047,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 24,
+      "outcome": 4,
+      "scene": "distributed-flight",
+      "landing": {
+        "x": 406.11468523246685,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 25,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 321.24035388755243,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 26,
+      "outcome": 1,
+      "scene": "shield-lock",
+      "landing": {
+        "x": 166.98759063728463,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 27,
+      "outcome": 5,
+      "scene": "fluid-interfaces",
+      "landing": {
+        "x": 473.9167357742756,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 28,
+      "outcome": 4,
+      "scene": "distributed-flight",
+      "landing": {
+        "x": 369.0008448740928,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 29,
+      "outcome": 3,
+      "scene": "pattern-convergence",
+      "landing": {
+        "x": 327.06511942868843,
+        "y": 812
+      },
+      "reset": "idle"
+    },
+    {
+      "round": 30,
+      "outcome": 2,
+      "scene": "compiled-geometry",
+      "landing": {
+        "x": 239.45335232879998,
+        "y": 812
+      },
+      "reset": "idle"
+    }
+  ]
+}

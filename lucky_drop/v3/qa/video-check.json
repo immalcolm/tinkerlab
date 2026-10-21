@@ -1,0 +1,21 @@
+{
+  "durationSeconds": 17.6,
+  "bytes": 2557384,
+  "video": {
+    "codec": "h264",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": 48000,
+    "channels": 2,
+    "meanDb": -28.1,
+    "peakDb": -5.6,
+    "streamDurationSeconds": 11.958333
+  },
+  "decodedWithoutErrors": true,
+  "lastFrameVisuallyChecked": "idle / ready to launch",
+  "limitations": "Direct browser audio capture, not a listening or target-speaker latency assessment. Audio ends before the silent photo/reset tail."
+}

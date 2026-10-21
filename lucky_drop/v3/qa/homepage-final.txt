@@ -1,0 +1,21 @@
+=== Starting TinkerLab Homepage QA Test Suite ===
+Using browser executable: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+Page Title: TinkerLab — Small experiments. Big ideas.
+Background Canvas exists: true
+Project Cards rendered: 3
+Launch Links: [
+  './lucky_drop/v3/index.html',
+  './lucky_drop/v2/index.html',
+  './lucky_drop/v1/index.html'
+]
+Thumbnails: [
+  './lucky_drop/v3/all_six_superpowers.jpg',
+  './lucky_drop/v2/preview_result.png',
+  './lucky_drop/v1/preview_v1.png'
+]
+All project thumbnails verified to exist on disk!
+Testing Category Filter...
+Cards matching "Creative Coding": 1
+Cards after reset to All: 3
+Testing Mobile Viewport (375x812)...
+=== ALL TINKERLAB HOMEPAGE TESTS PASSED! ===
