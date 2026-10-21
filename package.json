@@ -6,7 +6,9 @@
   "scripts": {
     "build": "node scripts/build_v3.js",
     "benchmark": "node scripts/physics_benchmark.js",
-    "test": "node scripts/test_homepage.js && node scripts/test_v3.js",
+    "test": "node scripts/test_physics.js && node scripts/test_homepage.js && node scripts/test_v3.js && node scripts/test_v3_safeguards.js",
+    "test:physics": "node scripts/test_physics.js",
+    "test:safeguards": "node scripts/test_v3_safeguards.js",
     "test:v3": "node scripts/test_v3.js",
     "test:home": "node scripts/test_homepage.js"
   },
@@ -24,6 +26,7 @@
   "author": "Malcolm",
   "license": "MIT",
   "devDependencies": {
+    "pixi.js": "^8.22.0",
     "puppeteer-core": "^25.15.0"
   }
 }

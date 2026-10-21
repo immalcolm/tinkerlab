@@ -25,7 +25,7 @@ const V3_DIR = path.resolve(__dirname, '../lucky_drop/v3');
 const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
 
 (async () => {
-  console.log('=== Starting Tech Drop 4.0 Comprehensive QA & Exhibition Test Suite ===');
+  console.log('=== Starting Tech Drop 5.0 Comprehensive QA & Exhibition Test Suite ===');
   console.log('Using browser executable:', CHROME_PATH);
 
   // ==============================================================
@@ -36,9 +36,10 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
   const css = fs.readFileSync(path.join(V3_DIR, 'style.css'), 'utf8');
   const physicsSrc = fs.readFileSync(path.join(V3_DIR, 'physics_engine.js'), 'utf8');
   const gameSrc = fs.readFileSync(path.join(V3_DIR, 'game.js'), 'utf8');
+  const revealSrc = fs.readFileSync(path.join(V3_DIR, 'reveal_engine.js'), 'utf8');
   const expectedHtml = template
     .replace('__CSS__', css)
-    .replace('__JS__', `// TECH DROP 4.0 Standalone Distribution\n${physicsSrc}\n\n${gameSrc}`);
+    .replace('__JS__', `// TECH DROP 5.0 Standalone Distribution\n${physicsSrc}\n\n${revealSrc}\n\n${gameSrc}`);
   const actualHtml = fs.readFileSync(path.join(V3_DIR, 'index.html'), 'utf8');
 
   if (actualHtml !== expectedHtml) {
@@ -60,7 +61,7 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
     const sim = TechDropPhysics.simulateTrajectory(seed);
 
     // Assert clean termination
-    if (sim.duration >= 6.8 || sim.trajectory.length < 50) {
+    if (!sim.completed || sim.landingY !== TechDropPhysics.FLOOR_Y || sim.trajectory.length < 50) {
       throw new Error(`Seed ${seed} failed termination requirement: duration=${sim.duration.toFixed(2)}s`);
     }
 
@@ -176,21 +177,21 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
   console.log('Round:', afterStartSnap.round, 'State:', afterStartSnap.state);
 
   // Wait for playing state
-  await new Promise(r => setTimeout(r, 800));
-  const playingState = await page.evaluate(() => document.documentElement.dataset.state);
-  console.log('State at 800ms:', playingState);
+  await page.waitForFunction(() => document.documentElement.dataset.state === 'playing', { timeout: 3000 });
+  console.log('State transitioned to playing');
+  // Wait 1.5s into playing to capture ball mid-air across pegs
+  await new Promise(r => setTimeout(r, 1500));
   await page.screenshot({ path: path.join(V3_DIR, 'preview_playing.png') });
 
-  // Wait for capture state (around 4.5s playing duration)
-  await new Promise(r => setTimeout(r, 4200));
-  const captureState = await page.evaluate(() => document.documentElement.dataset.state);
-  console.log('State at 5.0s:', captureState);
+  // Wait for capture state
+  await page.waitForFunction(() => document.documentElement.dataset.state === 'capture', { timeout: 18000 });
+  console.log('State transitioned to capture');
   await page.screenshot({ path: path.join(V3_DIR, 'preview_capture.png') });
 
-  // Wait for result state (capture takes ~1.35s)
-  await new Promise(r => setTimeout(r, 1600));
+  // Wait for result state
+  await page.waitForFunction(() => document.documentElement.dataset.state === 'result', { timeout: 5000 });
   const resultState = await page.evaluate(() => document.documentElement.dataset.state);
-  console.log('State at 6.6s:', resultState);
+  console.log('State transitioned to reveal:', resultState);
   if (resultState !== 'result') throw new Error(`Expected result state, got ${resultState}`);
   await page.screenshot({ path: path.join(V3_DIR, 'preview_result.png') });
 
@@ -201,7 +202,7 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
 
   // Test Auto-Reset
   console.log('Waiting for auto-reset countdown...');
-  await new Promise(r => setTimeout(r, 6800));
+  await page.waitForFunction(() => document.documentElement.dataset.state === 'idle', { timeout: 10000 });
   const resetState = await page.evaluate(() => document.documentElement.dataset.state);
   console.log('State after countdown:', resetState);
   if (resetState !== 'idle') throw new Error(`Expected auto-reset to idle, got ${resetState}`);
@@ -359,5 +360,5 @@ const V3_URL = 'file://' + path.join(V3_DIR, 'index.html');
     process.exit(1);
   }
 
-  console.log('\n=== ALL TECH DROP 4.0 QA & BENCHMARK TESTS PASSED SUCCESSFULLY! ===');
+  console.log('\n=== ALL TECH DROP 5.0 QA & BENCHMARK TESTS PASSED SUCCESSFULLY! ===');
 })();

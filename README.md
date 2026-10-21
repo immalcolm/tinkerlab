@@ -1,73 +1,63 @@
 # TinkerLab
 
-> **"Small experiments. Big ideas."**  
-> *A creative playground for code, creativity and curiosity.*
+Small experiments. Big ideas. A collection of creative coding projects by Malcolm.
 
-TinkerLab is a personal collection of experimental web applications, creative coding prototypes, interactive physics simulators, and technology demonstrators developed by Malcolm.
+[Live portfolio](https://immalcolm.github.io/tinkerlab/) · [Tech Drop](https://immalcolm.github.io/tinkerlab/lucky_drop/v3/)
 
-Live GitHub Pages Deployment: [https://immalcolm.github.io/tinkerlab/](https://immalcolm.github.io/tinkerlab/)
+## TECH DROP 5.0 — NP ICT
 
----
+A one-button technology discovery arcade for Ngee Ann Polytechnic School of InfoComm Technology exhibitions. Drop a luminous ball through 90 chrome pegs, follow its physical landing, then discover one of six identities: AI Architect, Cyber Guardian, Code Creator, Data Detective, Cloud Pilot or UX Inventor.
 
-## Featured Experiments
+- One authoritative 240Hz swept-circle CCD simulation, with peg normals, friction, spin, rounded collector dividers and exact swept floor contact. Deterministic tracks are recorded at 120Hz and played at their physical duration.
+- Discovery uses natural initial conditions; demonstration uses validated naturally landing seeds. Neither mode steers the ball. Incomplete simulations cannot become results. Natural outcomes are not equally distributed.
+- Neutral flight colour, directional contact sparks and bounded peg pulses lead into landing → rising core → six distinct canvas reveal scenes → a still photo moment. The photo window defaults to five seconds and can be set to 3–15 seconds.
+- Generated Web Audio: layered launch bass, velocity-sensitive contact tones and noise, spatial panning, a compressor, a 12-voice budget and six fanfares. Mute silences scheduled sounds; reset clears voices and effects.
+- Display-aware Canvas 2D backing resolution, cached peg materials, High/Medium/Low/Auto quality, reduced-motion support and operator effects intensity.
+- Touch, mouse, Space, Enter and Z input; Space/Enter USB HID buttons work as keyboard input. Native controls retain their own keyboard behavior. Hidden results/settings are inert, and the settings dialog wraps keyboard focus.
+- Event, sound, quality, effects and reset settings persist in local storage when available; HUD visibility is session-only. Automatic reset can be disabled for a visible Play again button. The optional NP course link is off by default and requires internet when opened.
 
-### 1. TECH DROP 3.5 — NP ICT Edition (`lucky_drop/v3/`)
-A cinematic, one-button interactive technology arcade experience developed for the **Ngee Ann Polytechnic School of InfoComm Technology (NP ICT)** for Open House events, school roadshows, and interactive tech exhibitions.
+The production game is the standalone **`lucky_drop/v3/index.html`**. Open that file directly or serve it from a static host. Play needs no CDN, server or external sound files. The repository directory is still named `v3` to preserve existing links; the visible release is 5.0. The v1 and v2 experiments are preserved.
 
-- **Next-Gen Continuous Collision Detection (CCD)**: Fixed-step 240Hz physics simulation with real contact normals, restitution ($e = 0.65$), spin/torque transfer, and natural ballistics.
-- **Zero Magnetic Steering**: Pure physical landings determine the discovered superpower identity. Includes a curated bank of 100% natural deterministic seeds for event demonstrations.
-- **Procedural Web Audio Synthesizer**: Zero external network or CDN dependencies. Velocity-sensitive impacts, positional stereo panning, transient noise + sub-bass 808 resonators, polyphony limiting (max 7 voices), and 6 unique musical fanfares.
-- **High-Impact Real-Time VFX**: Multi-layer pre-rendered glowing pegs, neural pulse illumination propagation across connected neighbor nodes, additive particle pooling, expanding shockwave rings, and dynamic camera recoil.
-- **Six Custom Tech Superpowers**: Custom vector SVG emblems and tailored presentations for:
-  - **AI Architect** (`#DEFF52`)
-  - **Cyber Guardian** (`#66F4EF`)
-  - **Code Creator** (`#B69CFF`)
-  - **Data Detective** (`#FFBF77`)
-  - **Cloud Pilot** (`#83B5FF`)
-  - **UX Inventor** (`#FF86C8`)
-- **Exhibition Kiosk Ready**: Portrait 9:16 layout with automatic kiosk scaling, input debouncing (Touch, Mouse, Space, Enter, USB HID Arcade Button), and auto-reset countdown.
-- **Performance Diagnostics HUD**: Toggleable via `Shift + F` or `?fps=1`, displaying current FPS, smoothed FPS, 1% low FPS, frame-time graph, active particle count, and DPR.
+## Operator controls
 
-### 2. TECH DROP 2.0 (`lucky_drop/v2/`)
-The second-generation Plinko prototype introducing the NP ICT branding theme, gift box capture animations, responsive kiosk scaling, and foundational sound effects.
+| Control | Action |
+| --- | --- |
+| Big button, Space, Enter or Z | Launch from idle; Space/Enter/Z reset a displayed result |
+| Sound button | Mute/unmute, including during a result |
+| Settings button or Shift+O | Event text, Discovery/Demonstration, photo duration, sound, quality, effects and reset |
+| Escape | Close settings |
+| Fullscreen button | Request browser fullscreen |
+| Shift+F or `?fps=1` | Performance HUD |
+| Shift+D | Developer panel with curated outcome selection, skip and reset |
+| `?quality=high`, `medium`, `low` or `auto` | Override saved quality |
+| `?mute=1` | Start muted |
 
-### 3. Lucky Drop 1.0 (`lucky_drop/v1/`)
-The original experimental peg-drop simulation exploring Plinko trajectory mechanics, basic collision detection, and HTML5 Canvas drawing that started the TinkerLab drop series.
+High allows up to 4× logical backing resolution, Medium caps at 1.5× and Low at 1×. Auto starts at High and adapts with hysteresis. Quality changes affect rendering only. HUD **1% low FPS** is 1000 divided by the mean of the slowest 1% frame times in its rolling 240-frame window; p99 frame time is a separate diagnostic.
 
----
+## Development
 
-## Development & Build Pipeline
+Use Node.js 22.12+ (matching the browser tooling dependency), npm and Chrome/Chromium. Tests default to the macOS Chrome path; the main browser suite also accepts `CHROME_BIN` or `PUPPETEER_EXECUTABLE_PATH`. The safeguards script accepts `CHROME_PATH`; capture/measurement/recording accept `CHROME_BIN`. Recording additionally requires ffmpeg at `/opt/homebrew/bin/ffmpeg`.
 
-### Prerequisites
-- Node.js (v18+)
-- Google Chrome (for automated headless browser testing)
-
-### Install Dependencies
-```bash
-npm install
-```
-
-### Build Standalone Distribution
-Recompiles `lucky_drop/v3/index.html` from `index.template.html`, `style.css`, and `game.js`:
-```bash
+```sh
+npm ci
 npm run build
-```
-
-### Run Automated QA Tests with Headless Chrome
-Runs comprehensive automated test suites verifying full round flows, all 6 outcomes, responsive viewports, and 200 deterministic simulations:
-```bash
 npm test
-```
-
-### Run Physics Benchmark
-Evaluates continuous collision detection, spin transfer, and seed distribution:
-```bash
 npm run benchmark
 ```
 
----
+Build inputs are `index.template.html`, `style.css`, `physics_engine.js`, `reveal_engine.js` and `game.js`. Rebuild after editing them; the test suite checks exact source/distribution consistency.
 
-## Architecture Principles
-1. **Zero Runtime Bloat**: Native HTML5, Canvas 2D, and Web Audio API. Fast load times (<15ms), zero npm bundle dependencies in production.
-2. **Deterministic Physics**: 120Hz/240Hz sub-stepping guarantees frame-rate independence and 100% reproducible trajectories.
-3. **100% Offline & GitHub Pages Compatible**: Self-contained assets and strictly relative paths (`./lucky_drop/v3/`) ensuring flawless operation under GitHub Pages subpaths or offline kiosk environments.
+`npm test` runs 10,000 seeds with deterministic replays and sampled geometry checks, the homepage suite, browser state/input/layout/outcome checks and focused safeguards. The shorter reset stress test deliberately skips animation; the full natural-round capture is separate:
+
+```sh
+node scripts/capture_v3.js     # 30 complete rounds; writes screenshots and qa/rounds.json
+node scripts/measure_v3.js     # run alone; Canvas/Pixi laboratory and production presets
+node scripts/record_v3.js      # run alone; portrait MP4 with direct Web Audio capture
+```
+
+Keep those browser jobs sequential so recording/capture does not distort performance measurements. The laboratory uses a local development-only PixiJS dependency; production remains Canvas 2D. See [the audit and renderer decision](docs/TECH_DROP_5_AUDIT.md) for measured evidence, scope and limitations. Evidence is saved under `lucky_drop/v3/qa/`.
+
+## Earlier experiments
+
+- **Tech Drop 2.0** — NP ICT Plinko prototype with gift capture and kiosk scaling (`lucky_drop/v2/`).
+- **Lucky Drop 1.0** — original peg-drop experiment (`lucky_drop/v1/`).

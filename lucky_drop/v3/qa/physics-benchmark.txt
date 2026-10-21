@@ -1,0 +1,23 @@
+
+> tinkerlab@1.0.0 benchmark
+> node scripts/physics_benchmark.js
+
+=== TECH DROP 5.0 CCD PHYSICS STRESS BENCHMARK (1,000 SEEDS) ===
+Board Specs: 90 Pegs, 6 Slots (width: 80px), Floor Y: 812px
+
+Simulated 1000 diverse runs in 418ms (0.42ms per run)
+Slot Distribution (0 to 5): [ 147, 141, 213, 224, 146, 129 ]
+Average Impacts: 52.3 collisions per drop (Range: 18 to 73)
+Flight Duration Range: 3.41s to 10.60s
+Out-of-bounds Landings: 0 / 1000
+Stuck / Timed-out Runs: 0 / 1000
+
+--- Verifying Curated Demonstration Seeds ---
+Slot 0 curated seeds verified: 5 seeds perfectly landing in slot 0!
+Slot 1 curated seeds verified: 5 seeds perfectly landing in slot 1!
+Slot 2 curated seeds verified: 5 seeds perfectly landing in slot 2!
+Slot 3 curated seeds verified: 5 seeds perfectly landing in slot 3!
+Slot 4 curated seeds verified: 5 seeds perfectly landing in slot 4!
+Slot 5 curated seeds verified: 5 seeds perfectly landing in slot 5!
+
+=== ALL 1,000 CCD PHYSICS STRESS TESTS PASSED! ===

@@ -1,8 +1,8 @@
-// TECH DROP 4.0 — Physics Verification & 1,000-Seed Stress Benchmark
+// TECH DROP 5.0 — Physics Verification & 1,000-Seed Stress Benchmark
 const { simulateTrajectory, PEGS, SLOTS, CURATED_SEEDS } = require('../lucky_drop/v3/physics_engine.js');
 
-console.log('=== TECH DROP 4.0 CCD PHYSICS STRESS BENCHMARK (1,000 SEEDS) ===');
-console.log(`Board Specs: 77 Pegs, 6 Slots (width: ${SLOTS[0].maxX - SLOTS[0].minX}px), Floor Y: 762px\n`);
+console.log('=== TECH DROP 5.0 CCD PHYSICS STRESS BENCHMARK (1,000 SEEDS) ===');
+console.log(`Board Specs: ${PEGS.length} Pegs, 6 Slots (width: ${SLOTS[0].maxX - SLOTS[0].minX}px), Floor Y: 812px\n`);
 
 const SEED_COUNT = 1000;
 const slotDistribution = [0, 0, 0, 0, 0, 0];
@@ -18,17 +18,17 @@ for (let i = 0; i < SEED_COUNT; i++) {
   const seed = 50000 + i * 317;
   const res = simulateTrajectory(seed);
 
-  // 1. Verify physical bounds
-  if (res.landingX < 46 || res.landingX > 494) {
+  // 1. Verify physical bounds (BOARD_LEFT = 30, BOARD_RIGHT = 510)
+  if (res.landingX < 30 || res.landingX > 510) {
     outOfBoundsCount++;
   }
 
-  // 2. Verify termination within 6.5s
-  if (res.duration >= 6.5) {
+  // Completion is a floor contact, never merely reaching a duration cutoff.
+  if (!res.completed || res.landingY !== 812) {
     timedOutCount++;
   }
 
-  slotDistribution[res.slot]++;
+  if (res.completed) slotDistribution[res.slot]++;
   minImpacts = Math.min(minImpacts, res.impactCount);
   maxImpacts = Math.max(maxImpacts, res.impactCount);
   totalImpacts += res.impactCount;
@@ -37,7 +37,7 @@ for (let i = 0; i < SEED_COUNT; i++) {
   maxDuration = Math.max(maxDuration, res.duration);
 
   // Collect candidates for curated seeds per slot
-  if (res.impactCount >= 12 && res.impactCount <= 26 && res.duration >= 3.2 && res.duration <= 5.5 && res.slotError < 20) {
+  if (res.completed && res.slotError < 20) {
     seedBank[res.slot].push(res);
   }
 }
@@ -48,8 +48,9 @@ console.log(`Simulated ${SEED_COUNT} diverse runs in ${elapsed}ms (${(elapsed / 
 console.log('Slot Distribution (0 to 5):', slotDistribution);
 console.log(`Average Impacts: ${(totalImpacts / SEED_COUNT).toFixed(1)} collisions per drop (Range: ${minImpacts} to ${maxImpacts})`);
 console.log(`Flight Duration Range: ${minDuration.toFixed(2)}s to ${maxDuration.toFixed(2)}s`);
-console.log(`Out-of-bounds Landings: ${outOfBoundsCount} / ${SEED_COUNT} (0%)`);
-console.log(`Stuck / Timed-out Runs: ${timedOutCount} / ${SEED_COUNT} (0%)`);
+console.log(`Out-of-bounds Landings: ${outOfBoundsCount} / ${SEED_COUNT}`);
+console.log(`Stuck / Timed-out Runs: ${timedOutCount} / ${SEED_COUNT}`);
+if (outOfBoundsCount || timedOutCount) throw new Error('Physics benchmark failed: incomplete or out-of-bounds drop');
 
 // Verify Curated Seed Bank
 console.log('\n--- Verifying Curated Demonstration Seeds ---');
