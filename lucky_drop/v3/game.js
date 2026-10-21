@@ -86,6 +86,35 @@ const ui = {
   brandTitle: $('brandTitle'),
   brandSubtitle: $('brandSubtitle')
 };
+ui.deviceNotice = $('deviceNotice');
+ui.deviceNoticeMessages = $('deviceNoticeMessages');
+let deviceNoticeDismissed = false;
+const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function updateDeviceNotice() {
+  const messages = [];
+  if (reducedMotion) {
+    messages.push('Reduced Motion is on. Some effects and reveal animations are intentionally still. For full animation, turn off Reduce Motion in your device’s Accessibility settings.');
+  }
+  if (isIOSDevice) {
+    messages.push('iPhone/iPad sound tip: check Silent Mode and media volume if you can’t hear the game.');
+  }
+  ui.deviceNotice.hidden = deviceNoticeDismissed || messages.length === 0 || state !== 'idle' || ui.operatorModal.classList.contains('open');
+  if (ui.deviceNoticeMessages.textContent !== messages.join('')) {
+    ui.deviceNoticeMessages.replaceChildren(...messages.map(text => {
+      const paragraph = document.createElement('p');
+      paragraph.textContent = text;
+      return paragraph;
+    }));
+  }
+}
+
+$('dismissDeviceNotice').addEventListener('click', () => {
+  deviceNoticeDismissed = true;
+  updateDeviceNotice();
+  if (state === 'idle') ui.start.focus({ preventScroll: true });
+});
 
 // ==========================================
 // SIX TECH SUPERPOWER THEMES & BESPOKE EMBLEMS
@@ -201,7 +230,11 @@ try {
 } catch (_) { /* File-mode kiosks may prohibit local storage. */ }
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 let reducedMotion = motionQuery.matches;
-motionQuery.addEventListener('change', e => { reducedMotion = e.matches; });
+motionQuery.addEventListener('change', e => {
+  reducedMotion = e.matches;
+  if (e.matches) deviceNoticeDismissed = false;
+  updateDeviceNotice();
+});
 let qualityPreset = urlParams.get('quality') || (urlParams.has('lite') ? 'low' : savedQuality);
 if (!['high', 'medium', 'low', 'auto'].includes(qualityPreset)) qualityPreset = 'high';
 let effectiveQuality = qualityPreset === 'auto' ? 'high' : qualityPreset;
@@ -802,6 +835,7 @@ function setState(next) {
     ui.bottom.inert = true;
     ui.hero.classList.add('faded');
   }
+  updateDeviceNotice();
 }
 
 function announce(s) {
@@ -1422,6 +1456,7 @@ function openOperatorConfig() {
   ui.operatorModal.inert = false;
   ui.operatorModal.setAttribute('aria-hidden', 'false');
   ui.closeConfig.focus();
+  updateDeviceNotice();
 }
 
 function closeOperatorConfig() {
@@ -1430,6 +1465,7 @@ function closeOperatorConfig() {
     ui.operatorModal.inert = true;
     ui.operatorModal.setAttribute('aria-hidden', 'true');
     stage.focus({ preventScroll: true });
+    updateDeviceNotice();
   }
 }
 
